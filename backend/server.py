@@ -599,18 +599,22 @@ async def startup():
 
 
 async def seed_admin():
-    email = os.environ["ADMIN_EMAIL"].lower()
-    pw = os.environ["ADMIN_PASSWORD"]
-    existing = await db.users.find_one({"email": email})
-    if not existing:
-        await db.users.insert_one({
-            "id": new_id(), "name": "FixitZ Admin", "email": email, "phone": "9906000000",
-            "password_hash": hash_password(pw), "role": "admin", "wallet": 0,
-            "referralCode": "ADMIN1", "created_at": now_iso(),
-        })
-        logger.info("Admin user seeded")
-    elif not verify_password(pw, existing["password_hash"]):
-        await db.users.update_one({"email": email}, {"$set": {"password_hash": hash_password(pw), "role": "admin"}})
+    admins = [(os.environ["ADMIN_EMAIL"].lower(), os.environ["ADMIN_PASSWORD"])]
+    extra_emails = [e.strip().lower() for e in os.environ.get("EXTRA_ADMIN_EMAILS", "").split(",") if e.strip()]
+    extra_pw = os.environ.get("EXTRA_ADMIN_PASSWORD", "")
+    for e in extra_emails:
+        admins.append((e, extra_pw))
+    for email, pw in admins:
+        existing = await db.users.find_one({"email": email})
+        if not existing:
+            await db.users.insert_one({
+                "id": new_id(), "name": email.split("@")[0], "email": email, "phone": "9906000000",
+                "password_hash": hash_password(pw), "role": "admin", "wallet": 0,
+                "referralCode": email[:5].upper(), "created_at": now_iso(),
+            })
+            logger.info(f"Admin seeded: {email}")
+        else:
+            await db.users.update_one({"email": email}, {"$set": {"password_hash": hash_password(pw), "role": "admin"}})
 
 
 async def seed_demo_data():

@@ -1,0 +1,147 @@
+{
+  "theme": {
+    "mode": "light",
+    "rationale": "E-commerce and consumer service apps perform best with light themes to maximize product visibility, trust, and legibility. An energetic, high-contrast light theme fits the Shopee-style dynamic vibe."
+  },
+  "typography": {
+    "headings": {
+      "family": "Cabinet Grotesk",
+      "weights": ["800", "900"],
+      "usage": "Use tight letter spacing (tracking-tight) for large headers to feel bold, punchy, and app-like.",
+      "fallback": "sans-serif"
+    },
+    "body": {
+      "family": "Plus Jakarta Sans",
+      "weights": ["400", "500", "600"],
+      "usage": "Clean, geometric sans for dense mobile UIs. Excellent legibility at small text sizes.",
+      "fallback": "sans-serif"
+    },
+    "anti_patterns_enforced": [
+      "Do NOT use Inter, Roboto, or Open Sans.",
+      "Never center-align long descriptive text."
+    ]
+  },
+  "colors": {
+    "primary": {
+      "DEFAULT": "#F94C10",
+      "hover": "#E03B00",
+      "light": "#FFF0EB",
+      "description": "High-energy Electric Orange. Drives action and creates the 'Shopee-style' urgency."
+    },
+    "background": {
+      "DEFAULT": "#F8F7F5",
+      "paper": "#FFFFFF",
+      "description": "Warm tinted grey for main app background, pure white for content cards to create elevation."
+    },
+    "neutral": {
+      "900": "#121110",
+      "800": "#2A2826",
+      "500": "#7A7571",
+      "200": "#E6E4DF",
+      "description": "Warm-tinted blacks and greys. Never use pure #000000 for text."
+    },
+    "success": "#059669",
+    "warning": "#F59E0B",
+    "danger": "#DC2626"
+  },
+  "layouts": {
+    "mobile_app_view": {
+      "navigation": "Fixed bottom navigation bar for mobile views, featuring 4-5 core tabs (Home, Shop, Bookings, Account) with active state highlighting (Orange).",
+      "header": "Sticky glassmorphism header (backdrop-blur-xl bg-white/70) with a 1px border-b border-black/5. CRITICAL: Do not use fully transparent headers.",
+      "spacing": "Dense but readable. Use p-4 to p-6 for containers. Avoid excessive whitespace that reduces product density on mobile screens."
+    },
+    "admin_dashboard": {
+      "style": "Swiss & High-Contrast Archetype.",
+      "structure": "Sidebar navigation (dark or pure white), dense grid layout for metrics. Cardless or 1px subtle borders (border-neutral-200), NO soft drop shadows.",
+      "density": "Tight gap-4 grids. Maximum data visibility."
+    }
+  },
+  "components": {
+    "buttons": "Pill-shaped (rounded-full) for primary actions. Sharp inner contrast, active scale-down animation (active:scale-95).",
+    "cards": "Soft Neumorphic touch for the consumer app: pure white background, subtle shadow-sm, rounded-2xl or rounded-3xl. For admin: square or rounded-md with 1px solid border.",
+    "inputs": "Shadcn based. Filled style (bg-neutral-100) instead of outlined on mobile to reduce visual noise. Highlight border-primary on focus.",
+    "badges": "Flash sale or discount badges must be bold and pill-shaped, overlapping product images at the top-left."
+  },
+  "visual_enhancers": {
+    "glassmorphism": "Used selectively on the bottom nav and top sticky header. MUST include a 1px delicate inner stroke.",
+    "bento_grids": "Use Mode A (Tetris Grid) for homepage dynamic banners (e.g., 'Spin & Win' taking a large span, 'Sell Phone' taking a tall span).",
+    "textures": "Subtle noise overlay on the primary orange gradient banners to break the 'flat digital' feel."
+  },
+  "motion": {
+    "page_transitions": "Framer Motion slide-up and fade-in for route changes to mimic native app navigation.",
+    "lists": "Staggered entrance animations for product grids and repair model selections.",
+    "interactions": "Micro-bouncing on icon taps, smooth expand/collapse for accordion elements."
+  },
+  "accessibility": {
+    "contrast": "Ensure white text on the primary orange meets 3:1 minimum contrast. Use text-neutral-900 instead of white if the orange tint gets too light.",
+    "touch_targets": "Minimum 48x48px for all clickable elements in the consumer mobile UI.",
+    "testing": "All interactive elements MUST include data-testid (e.g., data-testid='bottom-nav-home')."
+  },
+  "media": {
+    "image_urls": {
+      "repair_service": [
+        {
+          "url": "https://images.unsplash.com/photo-1550041473-d296a3a8a18a?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzV8MHwxfHNlYXJjaHwxfHxzbWFydHBob25lJTIwcmVwYWlyJTIwdGVjaG5pY2lhbnxlbnwwfHx8fDE3ODgwMDI4OTF8MA&ixlib=rb-4.1.0&q=85",
+          "description": "Technician hands working on motherboard",
+          "category": "repair_hero"
+        },
+        {
+          "url": "https://images.pexels.com/photos/6754839/pexels-photo-6754839.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+          "description": "Microscope repair close up",
+          "category": "repair_feature"
+        }
+      ],
+      "shop_accessories": [
+        {
+          "url": "https://images.unsplash.com/photo-1573739022854-abceaeb585dc?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzh8MHwxfHNlYXJjaHwxfHxtb2JpbGUlMjBwaG9uZSUyMGFjY2Vzc29yaWVzfGVufDB8fHx8MTc4ODAwMjg5MXww&ixlib=rb-4.1.0&q=85",
+          "description": "Colorful flatlay with phone and accessories",
+          "category": "shop_banner"
+        },
+        {
+          "url": "https://images.unsplash.com/photo-1566793474285-2decf0fc182a?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzh8MHwxfHNlYXJjaHwyfHxtb2JpbGUlMjBwaG9uZSUyMGFjY2Vzc29yaWVzfGVufDB8fHx8MTc4ODAwMjg5MXww&ixlib=rb-4.1.0&q=85",
+          "description": "Red phone and accessories",
+          "category": "shop_category"
+        }
+      ],
+      "buy_sell_phones": [
+        {
+          "url": "https://images.unsplash.com/photo-1580910051074-3eb694886505?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1OTV8MHwxfHNlYXJjaHwxfHx1c2VkJTIwc21hcnRwaG9uZXxlbnwwfHx8fDE3ODgwMDI4OTF8MA&ixlib=rb-4.1.0&q=85",
+          "description": "Used smartphone on textile",
+          "category": "sell_phone_banner"
+        },
+        {
+          "url": "https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1OTV8MHwxfHNlYXJjaHwyfHx1c2VkJTIwc21hcnRwaG9uZXxlbnwwfHx8fDE3ODgwMDI4OTF8MA&ixlib=rb-4.1.0&q=85",
+          "description": "Phone screen close up",
+          "category": "buy_phone_feature"
+        }
+      ]
+    },
+    "icons": {
+      "library": "lucide-react",
+      "instruction": "Use lucide-react for all iconography. Keep stroke width consistent at 2px. Use filled variants only for active bottom nav states."
+    }
+  },
+  "instructions_to_main_agent": [
+    "This project uses .js/.jsx files (not .tsx). Ensure all React components and imports are formulated using JavaScript syntax.",
+    "Build the homepage entirely dynamically. Create a JSON configuration or map array that defines sections (banner, repair_service, flash_sale, etc.) and render them recursively to simulate an admin-controlled layout.",
+    "Implement a Mobile-First layout. Confine the main consumer app view to a max-w-md or max-w-lg container centered on desktop, mimicking a phone screen, or build a fully responsive UI that feels like an app on mobile (with bottom nav) and scales intelligently.",
+    "For the Admin Panel, create a separate route/layout (/admin) that uses the full width of the screen, with a sidebar and dense data tables.",
+    "Use Framer Motion for the multi-step repair booking flow and the 'Sell Phone' condition questionnaire.",
+    "Implement Shadcn/UI (in .jsx) for modals, drawers (crucial for mobile bottom sheets), dropdowns, and form elements. Customize the border-radii to be more rounded (e.g., radius 1rem) for the consumer app.",
+    "Ensure all interactive and key informational elements have a 'data-testid' attribute for robust automated testing."
+  ],
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "You tend to converge toward generic, 'on distribution' outputs. Avoid the 'AI slop' aesthetic. Be distinctive.",
+    "Create depth through layered design elements with z-index hierarchy.",
+    "Use glass-morphism effects with backdrop filters (12-24px blur) where appropriate. Do NOT use complete transparent backgrounds in headers or overlays.",
+    "You MUST NOT apply universal transitions (e.g., transition: all). Always add transitions for specific properties.",
+    "You MUST NOT center align the app container text by default.",
+    "Always use modern button styles like pill-shaped, with interaction animations & color relevant to the app style.",
+    "NEVER use AI assistant Emoji characters like 🤖🧠💭💡🔮🎯 etc. for icons.",
+    "Every interaction needs micro-animations - hover states, transitions, entrance animations. Static = dead.",
+    "Use generous spacing for marketing/consumer sections, and tight bento grids for admin layouts.",
+    "Prioritize using pre-existing components from src/components/ui.",
+    "Use sonner for toast notifications.",
+    "Include data-testid on all interactive elements for robust testing."
+  ]
+}

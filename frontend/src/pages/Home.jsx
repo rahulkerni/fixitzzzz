@@ -29,8 +29,8 @@ function BannerSection({ config }) {
   if (!slides.length) return null;
   const s = slides[i % slides.length];
   return (
-    <div className="px-4 pt-4">
-      <div className="relative rounded-[28px] overflow-hidden h-56 shadow-lg shadow-orange-500/10" data-testid="hero-banner" onClick={() => s.link && nav(s.link)}>
+    <div className="pt-0">
+      <div className="relative overflow-hidden h-64 shadow-lg" data-testid="hero-banner" onClick={() => s.link && nav(s.link)}>
         <AnimatePresence mode="wait">
           <motion.img key={i} src={s.image} alt="" initial={{ opacity: 0, scale: 1.08 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.7 }} className="absolute inset-0 w-full h-full object-cover" />
         </AnimatePresence>
@@ -41,7 +41,7 @@ function BannerSection({ config }) {
           <button className="mt-3 bg-fx text-white text-sm font-bold px-5 py-2.5 rounded-full active:scale-95 transition-transform flex items-center gap-1 shadow-lg shadow-orange-600/40">{s.cta} <ArrowRight className="w-4 h-4" /></button>
         </div>
       </div>
-      <div className="flex gap-1.5 justify-center mt-2.5">
+      <div className="flex gap-1.5 justify-center mt-2.5 pb-1">
         {slides.map((_, k) => <div key={k} className={`h-1.5 rounded-full transition-all duration-300 ${k === i % slides.length ? "w-6 bg-fx" : "w-1.5 bg-n200"}`} />)}
       </div>
     </div>

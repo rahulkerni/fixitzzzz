@@ -24,7 +24,8 @@ export default function Splash() {
   useEffect(() => {
     if (!show) return;
     sessionStorage.setItem("fx_splash", "1");
-    // browsers block autoplay — fire the whoosh on the very first user gesture
+    // try immediately (may be blocked), and also fire on the first user gesture
+    playWhoosh();
     let played = false;
     const fire = () => { if (!played) { played = true; playWhoosh(); } };
     window.addEventListener("pointerdown", fire, { once: true });
@@ -50,8 +51,7 @@ export default function Splash() {
         <div className="w-24 h-24 mx-auto rounded-3xl bg-fx flex items-center justify-center text-white font-display text-5xl shadow-2xl shadow-orange-600/50">F</div>
         <h1 className="font-display text-4xl text-white mt-4 tracking-tight">FixitZ</h1>
         <p className="text-fx text-sm font-semibold mt-1">30-Min Doorstep Repair · Jammu</p>
-        <div className="h-1 bg-fx rounded-full mx-auto mt-4" style={{ width: "120px", animation: "fx-speed 1.4s ease-in-out" }} />
-        <p className="text-white/40 text-[11px] mt-3">tap to enter · 🔊</p>
+        <p className="text-white/40 text-[11px] mt-4">tap to enter · 🔊</p>
       </div>
     </div>
   );

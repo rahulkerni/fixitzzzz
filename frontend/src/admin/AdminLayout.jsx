@@ -1,6 +1,6 @@
 import React from "react";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Settings, LayoutList, Package, Wrench, RefreshCw, Smartphone, ShoppingCart, Users, ArrowLeft, Blocks, Image, ToggleRight, MessageCircle, Grid3x3, Ticket, Zap, Wallet, Gift } from "lucide-react";
+import { LayoutDashboard, Settings, LayoutList, Package, Wrench, RefreshCw, Smartphone, ShoppingCart, Users, ArrowLeft, Blocks, Image, ToggleRight, MessageCircle, Grid3x3, Ticket, Zap, Wallet, Gift, PackageOpen } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
 const LINKS = [
@@ -17,6 +17,7 @@ const LINKS = [
   { to: "/admin/sell", label: "Sell Engine", icon: RefreshCw },
   { to: "/admin/buy", label: "Buy / Refurbished", icon: Smartphone },
   { to: "/admin/coupons", label: "Coupons", icon: Ticket },
+  { to: "/admin/free-products", label: "Free Products", icon: PackageOpen },
   { to: "/admin/wallet", label: "Wallet", icon: Wallet },
   { to: "/admin/referrals", label: "Referrals", icon: Gift },
   { to: "/admin/orders", label: "Orders", icon: ShoppingCart },

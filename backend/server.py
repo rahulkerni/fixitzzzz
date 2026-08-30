@@ -138,6 +138,9 @@ class SettingsInput(BaseModel):
     adminAlertEmail: Optional[str] = None
     adminAlertPhone: Optional[str] = None
     flashSaleEndsAt: Optional[str] = None
+    primaryColor: Optional[str] = None
+    accentColor: Optional[str] = None
+    pageBg: Optional[str] = None
 
 
 class SectionInput(BaseModel):
@@ -220,6 +223,24 @@ def compute_repair_price(base: float, override: Optional[float]) -> float:
     else:
         m = 2.0
     return round(base * m)
+
+
+REPAIR_PHONE_IMG = "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?crop=entropy&cs=srgb&fm=jpg&q=85&w=600"
+
+DEFAULT_TIERS = {"bands": [
+    {"upTo": 2000, "battery": 900, "speaker": 500, "charging_port": 700, "back_panel": 800},
+    {"upTo": 4000, "battery": 1600, "speaker": 800, "charging_port": 1000, "back_panel": 1400},
+    {"upTo": 6000, "battery": 2200, "speaker": 1100, "charging_port": 1400, "back_panel": 2000},
+    {"upTo": None, "battery": 3000, "speaker": 1400, "charging_port": 1800, "back_panel": 2600},
+]}
+
+
+def band_for(tiers: dict, screen: float) -> dict:
+    bands = sorted(tiers.get("bands", []), key=lambda b: (b.get("upTo") is None, b.get("upTo") or 0))
+    for b in bands:
+        if b.get("upTo") is None or screen <= b["upTo"]:
+            return b
+    return bands[-1] if bands else {}
 
 
 def compute_sell_price(base: float, conditions: List[dict], answers: Dict[str, str]) -> dict:
@@ -359,6 +380,20 @@ async def product_detail(pid: str):
     return clean(doc)
 
 
+@api.get("/search")
+async def search(q: str):
+    ql = (q or "").strip()
+    if not ql:
+        return {"products": [], "repairModels": [], "query": ql}
+    rx = {"$regex": ql, "$options": "i"}
+    products = [clean(d) for d in await db.products.find({"active": True, "$or": [{"name": rx}, {"description": rx}, {"tags": rx}]}).to_list(50)]
+    models = await db.repair_models.find({"active": True, "name": rx}).to_list(50)
+    brands = {b["id"]: b for b in await db.repair_brands.find({}).to_list(500)}
+    repair = [{"id": m["id"], "name": m["name"], "image": m.get("image"), "brand_id": m.get("brand_id"),
+               "brand": brands.get(m.get("brand_id"), {}).get("name", "")} for m in models]
+    return {"products": products, "repairModels": repair, "query": ql}
+
+
 @api.get("/flash-sale")
 async def flash_sale():
     settings = await db.settings.find_one({"id": "appConfig"}) or {}
@@ -438,12 +473,18 @@ async def validate_coupon(code: str, order_value: float, user: dict = Depends(ge
 # ---------------------------------------------------------------------------
 @api.post("/orders")
 async def create_order(inp: OrderInput, user: dict = Depends(get_current_user)):
+    has_free = inp.type == "product" and any(float(i.get("price") or 0) == 0 for i in inp.items)
+    if has_free:
+        prior = await db.orders.find_one({"userId": user["id"], "freeClaim": True})
+        if prior:
+            raise HTTPException(status_code=400, detail="You have already claimed your free product. Limit is one per account.")
     order = {
         "id": new_id(), "userId": user["id"], "userName": user.get("name"),
         "userPhone": user.get("phone"), "userEmail": user.get("email"),
         "type": inp.type, "items": inp.items, "amount": inp.amount,
         "details": inp.details, "address": inp.address, "payment": inp.payment,
-        "status": "pending", "created_at": now_iso(),
+        "status": "awaiting_approval" if has_free else "pending",
+        "freeClaim": has_free, "created_at": now_iso(),
     }
     await db.orders.insert_one(order)
     settings = await db.settings.find_one({"id": "appConfig"}) or {}
@@ -804,6 +845,102 @@ async def serve_file(path: str):
         raise HTTPException(status_code=404, detail="File not found")
     ct = (rec.get("content_type") if rec else None) or got_ct
     return Response(content=data, media_type=ct, headers={"Cache-Control": "public, max-age=31536000"})
+
+
+async def _get_tiers():
+    doc = await db.repair_config.find_one({"id": "tiers"})
+    return doc.get("data") if doc and doc.get("data") else DEFAULT_TIERS
+
+
+async def _issue_names():
+    issues = await db.repair_issues.find({}).to_list(100)
+    m = {i["key"]: i.get("name", i["key"]) for i in issues}
+    for k, n in {"screen": "Screen Replacement", "battery": "Battery Replacement", "charging_port": "Charging Port Repair", "speaker": "Speaker Repair", "back_panel": "Back Panel Replacement"}.items():
+        m.setdefault(k, n)
+    return m
+
+
+async def _set_service(model_id, key, name, price, mode):
+    existing = await db.repair_services.find_one({"model_id": model_id, "issue": key})
+    if existing:
+        cur = existing.get("override_price") if existing.get("override_price") is not None else existing.get("base_price")
+        if mode == "fill" and cur:
+            return False
+        await db.repair_services.update_one({"id": existing["id"]}, {"$set": {"base_price": price, "override_price": price, "active": True}})
+    else:
+        await db.repair_services.insert_one({"id": new_id(), "model_id": model_id, "issue": key, "issue_name": name, "base_price": price, "override_price": price, "active": True})
+    return True
+
+
+@api.get("/admin/repair-tiers")
+async def admin_get_tiers(user: dict = Depends(require_admin)):
+    return await _get_tiers()
+
+
+@api.put("/admin/repair-tiers")
+async def admin_put_tiers(payload: GenericDoc, user: dict = Depends(require_admin)):
+    await db.repair_config.update_one({"id": "tiers"}, {"$set": {"id": "tiers", "data": payload.data}}, upsert=True)
+    return payload.data
+
+
+@api.post("/admin/repair/apply-tiers")
+async def admin_apply_tiers(payload: GenericDoc, user: dict = Depends(require_admin)):
+    mode = payload.data.get("mode", "fill")
+    tiers = await _get_tiers()
+    names = await _issue_names()
+    keys = ["battery", "speaker", "charging_port", "back_panel"]
+    models = await db.repair_models.find({}).to_list(5000)
+    updated = 0
+    for m in models:
+        screen = await db.repair_services.find_one({"model_id": m["id"], "issue": "screen"})
+        if not screen:
+            continue
+        sp = screen.get("override_price") if screen.get("override_price") is not None else screen.get("base_price", 0)
+        band = band_for(tiers, sp)
+        for k in keys:
+            if band.get(k) is not None and await _set_service(m["id"], k, names.get(k, k), band[k], mode):
+                updated += 1
+    return {"updated": updated, "models": len(models)}
+
+
+@api.post("/admin/repair/bulk-import")
+async def admin_bulk_import(payload: GenericDoc, user: dict = Depends(require_admin)):
+    rows = payload.data.get("rows", [])
+    allow_new = payload.data.get("allow_new_brands", True)
+    tiers = await _get_tiers()
+    names = await _issue_names()
+    keys = ["battery", "speaker", "charging_port", "back_panel"]
+    brands = await db.repair_brands.find({}).to_list(1000)
+    bmap = {b["name"].strip().lower(): b for b in brands}
+    created_models = created_brands = 0
+    skipped = []
+    for idx, row in enumerate(rows):
+        name = (row.get("name") or "").strip()
+        bname = (row.get("brand") or "").strip()
+        sp = row.get("screen_price")
+        if not name or not bname or sp in (None, ""):
+            skipped.append({"row": idx + 1, "reason": "missing name/brand/screen_price"}); continue
+        try:
+            sp = float(sp)
+        except (TypeError, ValueError):
+            skipped.append({"row": idx + 1, "reason": "invalid screen_price"}); continue
+        b = bmap.get(bname.lower())
+        if not b:
+            if not allow_new:
+                skipped.append({"row": idx + 1, "reason": f"unknown brand '{bname}'"}); continue
+            b = {"id": new_id(), "name": bname, "active": True, "order": len(bmap) + 1, "image": f"https://logo.clearbit.com/{bname.split()[0].lower()}.com"}
+            await db.repair_brands.insert_one(b); bmap[bname.lower()] = b; created_brands += 1
+        existing_m = await db.repair_models.find_one({"brand_id": b["id"], "name": name})
+        mid = existing_m["id"] if existing_m else new_id()
+        if not existing_m:
+            await db.repair_models.insert_one({"id": mid, "brand_id": b["id"], "name": name, "active": True, "image": REPAIR_PHONE_IMG})
+            created_models += 1
+        await _set_service(mid, "screen", names.get("screen", "Screen Replacement"), sp, "overwrite")
+        band = band_for(tiers, sp)
+        for k in keys:
+            if band.get(k) is not None:
+                await _set_service(mid, k, names.get(k, k), band[k], "overwrite")
+    return {"created_models": created_models, "created_brands": created_brands, "skipped": skipped}
 
 
 # --- Generic collection CRUD (defined last so literal routes take priority) ---

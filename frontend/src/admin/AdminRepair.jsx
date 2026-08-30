@@ -1,9 +1,11 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import CrudManager from "@/admin/CrudManager";
+import AdminRepairTiers from "@/admin/AdminRepairTiers";
+import AdminRepairImport from "@/admin/AdminRepairImport";
 import api from "@/lib/api";
 
-const TABS = ["Brands", "Models", "Issues", "Services"];
+const TABS = ["Brands", "Models", "Issues", "Services", "Price Tiers", "Bulk Import"];
 
 export default function AdminRepair() {
   const [tab, setTab] = useState("Brands");
@@ -67,6 +69,8 @@ export default function AdminRepair() {
             { key: "active", label: "Active", type: "boolean" },
           ]} />
       )}
+      {tab === "Price Tiers" && <AdminRepairTiers />}
+      {tab === "Bulk Import" && <AdminRepairImport />}
     </div>
   );
 }

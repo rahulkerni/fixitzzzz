@@ -18,6 +18,7 @@ export default function AdminSettings() {
       supportPhone: form.supportPhone, city: form.city,
       adminAlertEmail: form.adminAlertEmail, adminAlertPhone: form.adminAlertPhone,
       referralReward: form.referralReward === "" || form.referralReward == null ? null : Number(form.referralReward),
+      primaryColor: form.primaryColor, accentColor: form.accentColor, pageBg: form.pageBg,
     });
     qc.invalidateQueries({ queryKey: ["settings"] });
     toast.success("Settings updated");
@@ -31,6 +32,9 @@ export default function AdminSettings() {
     { k: "adminAlertEmail", l: "Admin Alert Email (new-order alerts)" },
     { k: "adminAlertPhone", l: "Admin Alert Phone (new-order SMS)" },
     { k: "referralReward", l: "Referral Reward (₹ per friend)", t: "number" },
+    { k: "primaryColor", l: "Primary Color (hex e.g. #EE4D2D)" },
+    { k: "accentColor", l: "Accent Color (hex e.g. #D0011B)" },
+    { k: "pageBg", l: "Page Background (hex e.g. #F8F7F5)" },
   ];
 
   return (

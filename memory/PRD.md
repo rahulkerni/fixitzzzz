@@ -34,6 +34,14 @@ Shopee-style UX (orange/white/black), everything controlled from admin (no hardc
 - ✅ Smart header search routing (AppLayout): repair keywords → /repair, sell/exchange → /sell, refurbished/used → /buy, else /shop. (Fixes "search showed accessories for repair terms".)
 - ✅ Removed intrusive AI chat auto-popup (was hijacking checkout after 10s); chat FAB retained.
 
+## Implemented (2026-08-30 wave 5)
+- ✅ Combined SEARCH: header search → /search showing BOTH products and repair models. Backend GET /api/search.
+- ✅ Free Product Management admin page /admin/free-products (mark/unmark products free, approve/reject free-order claims). Free-product coupon type added to Coupons admin.
+- ✅ Dynamic THEME from admin: Settings → Primary/Accent/Page-Background colors applied live via ThemeInjector (CSS vars + override).
+- ✅ Hero banner now full-WIDTH edge-to-edge (h-64). Product pages have "More Products"/related section. Splash "loading bar" removed (sound best-effort on gesture).
+- Verified: testing agent 7/7 100% + backend curl. Free-limit + awaiting_approval approval flow works.
+- Deferred: Sell/Repair "Other Model" input + repair "Request Price → admin" flow.
+
 ## Implemented (2026-08-30 wave 4)
 - ✅ Direct image UPLOAD across the admin panel (object storage) replacing all URL inputs: Products, Refurbished/Buy, Banners, Category icons, and Logo. Reusable `ImageUpload` component → POST /api/admin/upload, served via public GET /api/files/{path}. Backend `storage.py` (Emergent object storage, EMERGENT_LLM_KEY).
 - ✅ Header logo now uploadable from Admin → Settings; header renders the logo image when set.

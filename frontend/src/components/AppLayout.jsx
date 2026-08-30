@@ -24,16 +24,7 @@ export default function AppLayout() {
   const submitSearch = (e) => {
     e.preventDefault();
     const term = q.trim();
-    if (!term) { nav("/shop"); return; }
-    const t = term.toLowerCase();
-    const repairWords = ["repair", "fix", "screen", "display", "battery", "charging", "port", "broken", "crack", "cracked", "speaker", "mic", "camera repair", "water", "dead", "not working", "damage"];
-    const sellWords = ["sell", "exchange", "old phone", "trade"];
-    const buyWords = ["refurbished", "second hand", "used phone", "buy phone"];
-    const enc = encodeURIComponent(term);
-    if (sellWords.some((w) => t.includes(w))) nav(`/sell?q=${enc}`);
-    else if (buyWords.some((w) => t.includes(w))) nav(`/buy?q=${enc}`);
-    else if (repairWords.some((w) => t.includes(w))) nav(`/repair?q=${enc}`);
-    else nav(`/shop?q=${enc}`);
+    nav(`/search?q=${encodeURIComponent(term)}`);
   };
 
   return (

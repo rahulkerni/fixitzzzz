@@ -12,6 +12,8 @@ export default function ProductDetail() {
   const nav = useNavigate();
   const { add } = useCart();
   const { data: p, isLoading } = useQuery({ queryKey: ["product", id], queryFn: () => api.get(`/products/${id}`).then((r) => r.data) });
+  const { data: all = [] } = useQuery({ queryKey: ["products"], queryFn: () => api.get("/products").then((r) => r.data) });
+  const related = all.filter((x) => x.id !== id).slice(0, 8);
 
   if (isLoading) return <div className="p-4"><div className="fx-skeleton h-72 rounded-3xl" /></div>;
   if (!p) return <p className="text-center text-n500 py-10">Product not found.</p>;
@@ -36,6 +38,25 @@ export default function ProductDetail() {
           </div>
         </div>
       </div>
+
+      <div className="mt-6 px-4" data-testid="related-products">
+        <h2 className="font-display text-lg text-n900 mb-3">More Products</h2>
+        <div className="flex gap-3 overflow-x-auto no-scrollbar">
+          {related.map((r) => (
+            <div key={r.id} className="min-w-[140px] w-[140px] bg-white rounded-2xl overflow-hidden shadow-sm" data-testid={`related-${r.id}`}>
+              <img src={r.image} alt={r.name} className="w-full h-28 object-cover" onClick={() => nav(`/product/${r.id}`)} />
+              <div className="p-2.5">
+                <p className="text-xs font-semibold text-n800 line-clamp-2 h-8" onClick={() => nav(`/product/${r.id}`)}>{r.name}</p>
+                <div className="mt-1.5 flex items-center justify-between">
+                  <Price price={r.price} mrp={r.mrp} />
+                  <button onClick={() => { add(r); toast.success("Added!"); }} className="w-7 h-7 rounded-full bg-fx text-white flex items-center justify-center text-lg font-bold active:scale-90 transition-transform">+</button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div className="fixed bottom-[74px] left-1/2 -translate-x-1/2 w-full max-w-[480px] p-4 bg-white border-t border-n200 z-30 flex gap-3">
         <button onClick={() => { add(p); toast.success("Added to cart"); }} data-testid="pd-add-cart"
           className="flex-1 bg-fx-light text-fx font-bold py-4 rounded-full active:scale-95 transition-transform border border-fx/30">Add to Cart</button>

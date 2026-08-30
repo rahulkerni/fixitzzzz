@@ -6,7 +6,7 @@ import { fmt } from "@/lib/utils2";
 import { playAlert } from "@/lib/sounds";
 import { toast } from "sonner";
 
-const STATUSES = ["pending", "confirmed", "in-progress", "completed", "cancelled"];
+const STATUSES = ["awaiting_approval", "pending", "confirmed", "in-progress", "completed", "cancelled"];
 
 export default function AdminOrders() {
   const qc = useQueryClient();

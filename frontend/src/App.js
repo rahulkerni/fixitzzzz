@@ -35,6 +35,9 @@ import AdminReferrals from "@/admin/AdminReferrals";
 import FlashSale from "@/pages/FlashSale";
 import AdminUsers from "@/admin/AdminUsers";
 import AdminChat from "@/admin/AdminChat";
+import AdminFreeProducts from "@/admin/AdminFreeProducts";
+import SearchResults from "@/pages/SearchResults";
+import ThemeInjector from "@/components/ThemeInjector";
 
 function Protected({ children, admin }) {
   const { user, loading } = useAuth();
@@ -47,10 +50,12 @@ function Protected({ children, admin }) {
 export default function App() {
   return (
     <BrowserRouter>
+      <ThemeInjector />
       <Splash />
       <Routes>
         <Route element={<AppLayout />}>
           <Route path="/" element={<Home />} />
+          <Route path="/search" element={<SearchResults />} />
           <Route path="/repair" element={<Repair />} />
           <Route path="/shop" element={<Shop />} />
           <Route path="/product/:id" element={<ProductDetail />} />
@@ -77,6 +82,7 @@ export default function App() {
           <Route path="sell" element={<AdminSell />} />
           <Route path="buy" element={<AdminBuy />} />
           <Route path="coupons" element={<AdminCoupons />} />
+          <Route path="free-products" element={<AdminFreeProducts />} />
           <Route path="flash-sale" element={<AdminFlashSale />} />
           <Route path="wallet" element={<AdminWallet />} />
           <Route path="referrals" element={<AdminReferrals />} />

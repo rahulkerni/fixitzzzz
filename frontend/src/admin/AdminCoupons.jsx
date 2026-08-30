@@ -18,8 +18,9 @@ export default function AdminCoupons() {
         ]}
         fields={[
           { key: "code", label: "Coupon Code", type: "text", help: "e.g. FIRST100 — entered as UPPERCASE" },
-          { key: "type", label: "Discount Type", type: "select", options: [{ value: "flat", label: "Flat (₹ off)" }, { value: "percent", label: "Percentage (% off)" }] },
+          { key: "type", label: "Discount Type", type: "select", options: [{ value: "flat", label: "Flat (₹ off)" }, { value: "percent", label: "Percentage (% off)" }, { value: "free_product", label: "Free Product" }] },
           { key: "value", label: "Value (₹ or %)", type: "number" },
+          { key: "free_product_id", label: "Free Product ID (for Free Product type)", type: "text", help: "Paste the product ID to give free with this coupon" },
           { key: "min_order", label: "Minimum Order (₹)", type: "number" },
           { key: "max_discount", label: "Max Discount cap (₹, optional — for %)", type: "number" },
           { key: "expiry", label: "Expiry (ISO date, optional)", type: "text", help: "e.g. 2026-12-31T23:59:59Z — leave blank for no expiry" },

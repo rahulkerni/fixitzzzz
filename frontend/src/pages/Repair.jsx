@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, Check, Clock, MapPin } from "lucide-react";
+import { ChevronLeft, Check, Clock, MapPin, Phone, Wrench, ChevronDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -17,6 +17,8 @@ export default function Repair() {
   const [model, setModel] = useState(null);
   const [service, setService] = useState(null);
   const [address, setAddress] = useState("");
+  const [phone, setPhone] = useState("");
+  const [expanded, setExpanded] = useState(null);
 
   const { data: brands = [] } = useQuery({ queryKey: ["rbrands"], queryFn: () => api.get("/repair/brands").then((r) => r.data) });
   const { data: models = [] } = useQuery({ queryKey: ["rmodels", brand?.id], queryFn: () => api.get("/repair/models", { params: { brand_id: brand.id } }).then((r) => r.data), enabled: !!brand });
@@ -28,6 +30,7 @@ export default function Repair() {
 
   const book = async () => {
     if (!user) { toast.error("Please login to book"); nav("/login"); return; }
+    if (!/^\d{10}$/.test(phone.trim())) { toast.error("Enter a valid 10-digit mobile number"); return; }
     if (!address.trim()) { toast.error("Enter your address"); return; }
     payWithRazorpay({
       amount: service.price, user,
@@ -36,7 +39,7 @@ export default function Repair() {
           type: "repair", amount: service.price,
           items: [{ name: `${model.name} — ${service.issue_name}`, price: service.price }],
           details: { brand: brand.name, model: model.name, issue: service.issue_name },
-          address: { text: address }, payment: { id: resp.razorpay_payment_id, status: "paid" },
+          address: { text: address, phone }, payment: { id: resp.razorpay_payment_id, status: "paid" },
         });
         toast.success("Repair booked! Technician arriving in 30 min.");
         nav("/orders");
@@ -94,13 +97,33 @@ export default function Repair() {
           )}
           {step === 2 && (
             <div className="space-y-3" data-testid="repair-issues">
-              {services.map((s) => (
-                <button key={s.id} onClick={() => { setService(s); setStep(3); }} data-testid={`service-${s.id}`}
-                  className="w-full bg-white rounded-2xl shadow-sm p-4 flex items-center justify-between active:scale-[0.98] transition-transform">
-                  <span className="font-semibold text-n900">{s.issue_name}</span>
-                  <Price price={s.price} />
-                </button>
-              ))}
+              {services.map((s) => {
+                const open = expanded === s.id;
+                return (
+                  <div key={s.id} onClick={() => setExpanded(open ? null : s.id)} data-testid={`service-${s.id}`}
+                    className={`bg-white rounded-2xl shadow-sm p-4 fx-selectable cursor-pointer ${open ? "fx-selectable-active" : ""}`}>
+                    <div className="flex items-center gap-3">
+                      <div className="w-11 h-11 rounded-xl bg-fx-light flex items-center justify-center"><Wrench className="w-5 h-5 text-fx" /></div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold text-n900">{s.issue_name}</span>
+                          <span className="fx-glow-badge bg-fx text-white text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1"><Clock className="w-2.5 h-2.5" />⚡ 30 MIN</span>
+                        </div>
+                        <Price price={s.price} />
+                      </div>
+                      <ChevronDown className={`w-5 h-5 text-n500 transition-transform ${open ? "rotate-180" : ""}`} />
+                    </div>
+                    {open && (
+                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="mt-3 pt-3 border-t border-n200 overflow-hidden">
+                        <ul className="text-xs text-n500 space-y-1 mb-3">
+                          <li>✓ Genuine quality parts</li><li>✓ 6-month repair warranty</li><li>✓ Doorstep service in 30 minutes</li>
+                        </ul>
+                        <button onClick={(e) => { e.stopPropagation(); setService(s); setStep(3); }} data-testid={`service-select-${s.id}`} className="w-full bg-fx text-white font-bold py-3 rounded-full active:scale-95 transition-transform">Select · ₹{s.price.toLocaleString("en-IN")}</button>
+                      </motion.div>
+                    )}
+                  </div>
+                );
+              })}
               {!services.length && <p className="text-n500 text-sm text-center py-6">No services configured.</p>}
             </div>
           )}
@@ -114,6 +137,10 @@ export default function Repair() {
                   <span className="font-semibold">Total</span>
                   <span className="font-display text-2xl text-fx">{fmt(service.price)}</span>
                 </div>
+              </div>
+              <div className="bg-white rounded-2xl shadow-sm p-4">
+                <label className="text-xs font-semibold text-n800 flex items-center gap-1 mb-2"><Phone className="w-4 h-4 text-fx" /> Mobile Number (required)</label>
+                <input value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))} inputMode="numeric" data-testid="repair-phone" placeholder="10-digit mobile number" className="w-full bg-n200/40 rounded-xl p-3 text-sm outline-none focus:ring-2 ring-fx" />
               </div>
               <div className="bg-white rounded-2xl shadow-sm p-4">
                 <label className="text-xs font-semibold text-n800 flex items-center gap-1 mb-2"><MapPin className="w-4 h-4 text-fx" /> Doorstep Address (Jammu)</label>

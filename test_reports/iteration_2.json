@@ -1,0 +1,26 @@
+{
+  "summary": "Frontend-only re-test of 3 fixes: (1) Admin Coupons CRUD UI, (2) smart header search routing, (3) chat auto-popup removal. All three verified on viewport 430x900. Admin login (shamthemanu@gmail.com) succeeded, /admin/coupons renders, 'Coupons' nav item present. Add coupon (TEST50, flat, 50, min 200, active) succeeded and row appeared; edit changed value to 75 (row shows ₹75); delete removed the row after window.confirm. Header search: 'screen repair' -> /repair?q=..., 'usb charger' -> /shop?q=..., 'sell my phone' -> /sell?q=... — all correct. Chat: waited 12s on home, chat-panel did NOT auto-open (auto-popup effect removed as claimed); chat-fab visible and clicking it opens chat-panel.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Global", "issues": ["Recurring ERR_NAME_NOT_RESOLVED for external image hosts (unsplash/clearbit) — cosmetic, previously reported"]}
+    ]
+  },
+  "test_report_links": ["/app/test_reports/iteration_2.json"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "AdminCoupons defaults set active:true so the 'toggle active on' step is a no-op — button already reads 'Visible / Active'; that matches the requested end-state.",
+    "CrudManager select field for boolean uses string value; type='flat' passed via select_option works, but note the 'Select…' option value=''  exists — ensure users don't submit empty type (no client-side required validation).",
+    "CrudManager delete uses window.confirm — fine for MVP; consider a shadcn AlertDialog for consistency.",
+    "AppLayout.submitSearch keyword lists are case-insensitive and route correctly; 'camera' alone would fall to /shop while 'camera repair' hits repair — acceptable given ordering (sell/buy/repair/shop)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "not tested (skipped per request)", "frontend": "100% (3/3 features)"},
+  "test_credentials": "Admin: shamthemanu@gmail.com / Fixitz@2026 (works).",
+  "seed_data_creation": "Test coupon TEST50 was created, edited, and deleted during the run — DB left clean.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Splash screen appears once per session and must be tapped to dismiss (data-testid='splash-screen'). Admin nav testid for coupons is 'admin-nav-coupons'. CrudManager row id is the mongo doc uuid, so selectors are row-<uuid>, edit-<uuid>, del-<uuid>. Delete uses native window.confirm — attach a 'dialog' listener before clicking del-*. Chat auto-popup effect has been removed; only chat-fab click opens chat-panel."
+}

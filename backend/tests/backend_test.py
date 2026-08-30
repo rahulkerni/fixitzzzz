@@ -74,10 +74,94 @@ class TestPublic:
         r = s.get(f"{API}/sections")
         assert r.status_code == 200
         secs = r.json()
-        assert len(secs) == 7
+        assert len(secs) == 11, f"expected 11 v2 sections got {len(secs)}: {[x['type'] for x in secs]}"
         orders = [x["order"] for x in secs]
         assert orders == sorted(orders)
         assert all(x["visible"] for x in secs)
+        types = {x["type"] for x in secs}
+        expected_types = {"banner", "category_grid", "wallet", "flash_sale", "repair_service",
+                          "shop_products", "free_products", "sell_phone", "buy_phone",
+                          "order_tracking", "referral"}
+        assert expected_types.issubset(types), f"missing types: {expected_types - types}"
+
+    def test_settings_features_and_theme(self, s):
+        j = s.get(f"{API}/settings").json()
+        feats = j.get("features") or {}
+        for k in ["wallet", "referral", "spin", "flash"]:
+            assert k in feats, f"missing feature toggle: {k}"
+        assert (j.get("theme") or {}).get("primary") == "#FF6A00"
+
+
+# ---------- WALLET ----------
+class TestWallet:
+    def test_wallet_requires_auth(self, s):
+        assert s.get(f"{API}/wallet").status_code == 401
+        assert s.post(f"{API}/wallet/add", json={"amount": 100}).status_code == 401
+
+    def test_wallet_get_initial(self, s, user_token):
+        tok, _ = user_token
+        r = s.get(f"{API}/wallet", headers=bearer(tok))
+        assert r.status_code == 200
+        j = r.json()
+        assert "balance" in j and "transactions" in j
+        assert isinstance(j["transactions"], list)
+
+    def test_wallet_add_and_persist(self, s, user_token):
+        tok, _ = user_token
+        before = s.get(f"{API}/wallet", headers=bearer(tok)).json()["balance"]
+        r = s.post(f"{API}/wallet/add", json={"amount": 250, "note": "TEST_topup"}, headers=bearer(tok))
+        assert r.status_code == 200
+        j = r.json()
+        assert j["balance"] == before + 250
+        assert j["transaction"]["type"] == "credit"
+        assert j["transaction"]["amount"] == 250
+        # verify persistence via GET
+        w = s.get(f"{API}/wallet", headers=bearer(tok)).json()
+        assert w["balance"] == before + 250
+        assert any(t["note"] == "TEST_topup" and t["amount"] == 250 for t in w["transactions"])
+
+    def test_wallet_add_invalid_amount(self, s, user_token):
+        tok, _ = user_token
+        r = s.post(f"{API}/wallet/add", json={"amount": 0}, headers=bearer(tok))
+        assert r.status_code == 400
+        r = s.post(f"{API}/wallet/add", json={"amount": -50}, headers=bearer(tok))
+        assert r.status_code == 400
+
+
+# ---------- ADMIN FEATURES ----------
+class TestAdminFeatures:
+    def test_features_update_admin(self, s, admin_token):
+        orig = (s.get(f"{API}/settings").json().get("features") or {})
+        new_feats = {"wallet": False, "referral": True, "spin": True, "flash": False}
+        r = s.put(f"{API}/admin/settings", json={"features": new_feats}, headers=bearer(admin_token))
+        assert r.status_code == 200
+        assert r.json()["features"]["wallet"] is False
+        assert r.json()["features"]["flash"] is False
+        # restore
+        s.put(f"{API}/admin/settings", json={"features": orig or {"wallet": True, "referral": True, "spin": True, "flash": True}},
+              headers=bearer(admin_token))
+
+    def test_features_update_forbidden_for_user(self, s, user_token):
+        tok, _ = user_token
+        r = s.put(f"{API}/admin/settings", json={"features": {"wallet": False}}, headers=bearer(tok))
+        assert r.status_code == 403
+
+    def test_section_reorder_and_config(self, s, admin_token):
+        secs = s.get(f"{API}/admin/sections", headers=bearer(admin_token)).json()
+        assert secs
+        target = secs[0]
+        orig_order = target["order"]
+        orig_config = target.get("config", {})
+        new_order = orig_order + 1000
+        r = s.put(f"{API}/admin/sections/{target['id']}",
+                  json={"data": {"order": new_order, "config": {**orig_config, "bg": "#123456"}}},
+                  headers=bearer(admin_token))
+        assert r.status_code == 200
+        assert r.json()["order"] == new_order
+        assert r.json()["config"].get("bg") == "#123456"
+        # restore
+        s.put(f"{API}/admin/sections/{target['id']}",
+              json={"data": {"order": orig_order, "config": orig_config}}, headers=bearer(admin_token))
 
     def test_repair_flow(self, s):
         r = s.get(f"{API}/repair/brands")

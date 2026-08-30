@@ -62,20 +62,26 @@ export default function Buy() {
 
       <div className="px-4 mt-4 grid grid-cols-2 gap-3">
         {isLoading && Array.from({ length: 4 }).map((_, i) => <div key={i} className="fx-skeleton h-56 rounded-2xl" />)}
-        {phones.map((p) => (
-          <div key={p.id} className="bg-white rounded-2xl overflow-hidden shadow-sm" data-testid={`buy-item-${p.id}`}>
-            <img src={p.image} alt="" className="w-full h-32 object-cover" />
-            <div className="p-3">
-              <span className={`text-[10px] font-bold uppercase ${CONDCLR[p.condition]}`}>{p.condition}</span>
-              <p className="text-sm font-semibold text-n800 line-clamp-2 h-10">{p.name}</p>
-              <p className="text-[10px] text-n500 flex items-center gap-1 mt-0.5"><ShieldCheck className="w-3 h-3 text-emerald-600" />{p.warranty}</p>
-              <div className="flex items-center justify-between mt-1.5">
-                <span className="font-display text-fx">{fmt(p.price)}</span>
-                <button onClick={() => buyNow(p)} data-testid={`buy-now-${p.id}`} className="bg-fx text-white text-[11px] font-bold px-3 py-1.5 rounded-full active:scale-90 transition-transform">Buy</button>
+        {phones.map((p) => {
+          const tag = p.condition === "excellent" ? { l: "Like New", c: "bg-emerald-500" } : p.price <= 12000 ? { l: "Budget Pick", c: "bg-blue-500" } : { l: "Best Value", c: "bg-purple-500" };
+          return (
+            <div key={p.id} className="bg-white rounded-2xl overflow-hidden shadow-sm fx-selectable" data-testid={`buy-item-${p.id}`}>
+              <div className="relative">
+                <img src={p.image} alt="" className="w-full h-32 object-cover" />
+                <span className={`absolute top-2 left-2 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${CONDCLR[p.condition] ? "bg-n900" : "bg-n900"}`}>{p.condition}</span>
+                <span className={`absolute top-2 right-2 text-white text-[10px] font-bold px-2 py-0.5 rounded-full ${tag.c}`}>{tag.l}</span>
+              </div>
+              <div className="p-3">
+                <p className="text-sm font-semibold text-n800 line-clamp-2 h-10">{p.name}</p>
+                <p className="text-[10px] text-n500 flex items-center gap-1 mt-0.5"><ShieldCheck className="w-3 h-3 text-emerald-600" />{p.warranty}</p>
+                <div className="flex items-center justify-between mt-1.5">
+                  <span className="font-display text-fx">{fmt(p.price)}</span>
+                  <button onClick={() => buyNow(p)} data-testid={`buy-now-${p.id}`} className="bg-fx text-white text-[11px] font-bold px-3 py-1.5 rounded-full active:scale-90 transition-transform">Buy</button>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
       {!isLoading && !phones.length && <p className="text-center text-n500 text-sm py-10">No phones match your filters.</p>}
     </div>

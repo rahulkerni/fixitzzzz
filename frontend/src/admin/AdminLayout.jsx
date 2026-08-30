@@ -1,15 +1,21 @@
 import React from "react";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Settings, LayoutList, Package, Wrench, RefreshCw, Smartphone, ShoppingCart, Users, ArrowLeft } from "lucide-react";
+import { LayoutDashboard, Settings, LayoutList, Package, Wrench, RefreshCw, Smartphone, ShoppingCart, Users, ArrowLeft, Blocks, Image, ToggleRight, MessageCircle, Grid3x3, Ticket } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
 const LINKS = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, end: true },
-  { to: "/admin/sections", label: "Homepage Sections", icon: LayoutList },
+  { to: "/admin/builder", label: "Homepage Builder", icon: Blocks },
+  { to: "/admin/categories", label: "Category Icons", icon: Grid3x3 },
+  { to: "/admin/banners", label: "Banner Manager", icon: Image },
+  { to: "/admin/features", label: "Feature Toggles", icon: ToggleRight },
+  { to: "/admin/chat", label: "Chat Support", icon: MessageCircle },
+  { to: "/admin/sections", label: "All Sections", icon: LayoutList },
   { to: "/admin/products", label: "Shop Products", icon: Package },
   { to: "/admin/repair", label: "Repair Engine", icon: Wrench },
   { to: "/admin/sell", label: "Sell Engine", icon: RefreshCw },
   { to: "/admin/buy", label: "Buy / Refurbished", icon: Smartphone },
+  { to: "/admin/coupons", label: "Coupons", icon: Ticket },
   { to: "/admin/orders", label: "Orders", icon: ShoppingCart },
   { to: "/admin/users", label: "Users", icon: Users },
   { to: "/admin/settings", label: "App Settings", icon: Settings },

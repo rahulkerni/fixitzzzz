@@ -13,6 +13,110 @@ CASE_IMG = "https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?crop=en
 EARBUD_IMG = "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?crop=entropy&cs=srgb&fm=jpg&q=85&w=600"
 
 
+def build_sections_v2(new_id):
+    """App-like Shopee-style homepage layout."""
+    return [
+        {"id": new_id(), "type": "banner", "title": "Hero", "visible": True, "order": 0,
+         "config": {"slides": [
+             {"heading": "Phone broken? We fix it at your door.", "sub": "30-minute doorstep repair in Jammu", "image": REPAIR_IMG, "cta": "Book Repair Now", "link": "/repair"},
+             {"heading": "Sell your old phone in 30 sec", "sub": "Instant price • Free pickup • Get paid", "image": SELL_BANNER, "cta": "Get Instant Price", "link": "/sell"},
+             {"heading": "Accessories from ₹0", "sub": "Free products + lightning delivery", "image": SHOP_BANNER, "cta": "Shop Now", "link": "/shop"},
+         ]}},
+        {"id": new_id(), "type": "category_grid", "title": "What do you need?", "visible": True, "order": 1,
+         "config": {"items": [
+             {"label": "Repair", "icon": "wrench", "link": "/repair", "color": "#FFF1E8"},
+             {"label": "Shop", "icon": "shopping-bag", "link": "/shop", "color": "#E8F1FF"},
+             {"label": "Sell", "icon": "refresh-cw", "link": "/sell", "color": "#E8FFF2"},
+             {"label": "Buy", "icon": "smartphone", "link": "/buy", "color": "#F3E8FF"},
+             {"label": "Wallet", "icon": "wallet", "link": "/wallet", "color": "#FFF9E8"},
+             {"label": "Spin & Win", "icon": "gift", "link": "/wallet", "color": "#FFE8F0"},
+             {"label": "Free", "icon": "sparkles", "link": "/shop", "color": "#E8FFF2"},
+             {"label": "Orders", "icon": "package", "link": "/orders", "color": "#EFEFEF"},
+         ]}},
+        {"id": new_id(), "type": "wallet", "title": "FixitZ Wallet", "visible": True, "order": 2,
+         "config": {"highlight": True, "referralReward": 100}},
+        {"id": new_id(), "type": "flash_sale", "title": "⚡ Flash Deals", "visible": True, "order": 3,
+         "config": {"tag": "flash", "timer": 7200, "subtitle": "Hurry! Limited stock", "bg": "#FFF1E8", "highlight": True}},
+        {"id": new_id(), "type": "repair_service", "title": "30-Min Repairs", "visible": True, "order": 4,
+         "config": {"badge": "30 MIN GUARANTEE", "image": REPAIR_IMG2, "cta": "Start Repair", "link": "/repair"}},
+        {"id": new_id(), "type": "shop_products", "title": "Trending Accessories", "visible": True, "order": 5,
+         "config": {"tag": "featured"}},
+        {"id": new_id(), "type": "free_products", "title": "🎁 Grab it FREE", "visible": True, "order": 6,
+         "config": {"tag": "free", "bg": "#E8FFF2", "highlight": True, "subtitle": "Only pay delivery"}},
+        {"id": new_id(), "type": "sell_phone", "title": "Sell Your Phone", "visible": True, "order": 7,
+         "config": {"image": SELL_BANNER, "subtitle": "Sell your phone in 30 seconds", "cta": "Get Instant Price", "link": "/sell", "highlight": True}},
+        {"id": new_id(), "type": "buy_phone", "title": "Certified Refurbished", "visible": True, "order": 8,
+         "config": {"subtitle": "Up to 50% off • 6-mo warranty"}},
+        {"id": new_id(), "type": "order_tracking", "title": "Track Your Order", "visible": True, "order": 9,
+         "config": {}},
+        {"id": new_id(), "type": "referral", "title": "Invite & Earn ₹100", "visible": True, "order": 10,
+         "config": {"reward": 100, "subtitle": "Refer friends, earn wallet cash"}},
+        {"id": new_id(), "type": "video", "title": "FixitZ Reels", "visible": False, "order": 11,
+         "config": {"url": ""}},
+    ]
+
+
+def build_repair_dataset_v3(new_id):
+    """Comprehensive brand/model/issue price catalogue."""
+    issues_def = [
+        ("screen", "Screen Replacement", "smartphone"),
+        ("battery", "Battery Replacement", "battery-charging"),
+        ("charging_port", "Charging Port", "plug"),
+        ("speaker", "Speaker / Mic", "volume-2"),
+        ("back_panel", "Back Panel", "layers"),
+        ("camera", "Camera Fix", "camera"),
+    ]
+    issues = [{"id": new_id(), "key": k, "name": n, "icon": ic, "order": i} for i, (k, n, ic) in enumerate(issues_def)]
+    data = {
+        "Apple": [("iPhone 7", 1500), ("iPhone 8", 1600), ("iPhone X", 3500), ("iPhone XR", 3200), ("iPhone XS Max", 4200), ("iPhone 11", 3200), ("iPhone 11 Pro", 4500), ("iPhone 11 Pro Max", 5000), ("iPhone 12", 5200), ("iPhone 12 Pro", 5800), ("iPhone 12 Pro Max", 6500), ("iPhone 13", 5500), ("iPhone 13 Pro", 7000), ("iPhone 13 Pro Max", 7800), ("iPhone 14", 6800), ("iPhone 14 Plus", 7200), ("iPhone 14 Pro", 8500), ("iPhone 14 Pro Max", 9500), ("iPhone 15", 8000), ("iPhone 15 Plus", 8500), ("iPhone 15 Pro", 9800), ("iPhone 15 Pro Max", 11000)],
+        "Samsung": [("Galaxy S9", 3000), ("Galaxy S10", 3500), ("Galaxy S20", 4000), ("Galaxy S20 FE", 3200), ("Galaxy S21", 4200), ("Galaxy S21 FE", 3400), ("Galaxy S22", 4800), ("Galaxy S23", 5500), ("Galaxy S24", 6500), ("Galaxy S24 Ultra", 9000), ("Galaxy A14", 1800), ("Galaxy A34", 2400), ("Galaxy A54", 2600), ("Galaxy A73", 3000), ("Galaxy M14", 1600), ("Galaxy M34", 2200), ("Galaxy Note 20", 5200)],
+        "Xiaomi": [("Redmi 9", 900), ("Redmi 10", 1100), ("Redmi Note 10", 1600), ("Redmi Note 11", 1700), ("Redmi Note 12", 1800), ("Redmi Note 13", 2000), ("Redmi Note 13 Pro", 2600), ("Mi 11X", 2400), ("Xiaomi 12", 3200), ("Xiaomi 13", 3800), ("Poco X5", 1900), ("Poco F5", 2800)],
+        "OnePlus": [("OnePlus 7", 2800), ("OnePlus 8", 3200), ("OnePlus 8T", 3400), ("OnePlus 9", 3800), ("OnePlus 9R", 3400), ("OnePlus 10 Pro", 4600), ("OnePlus 10T", 4200), ("OnePlus 11", 4800), ("Nord 2", 2400), ("Nord CE 3", 2200), ("Nord 3", 2600)],
+        "Vivo": [("Vivo Y21", 1400), ("Vivo Y35", 1700), ("Vivo V21", 2200), ("Vivo V23", 2500), ("Vivo V25", 2600), ("Vivo V27", 2800), ("Vivo V29", 3200), ("Vivo T1", 1900), ("Vivo T2", 2100)],
+        "Oppo": [("Oppo A17", 1300), ("Oppo A57", 1600), ("Oppo A78", 1900), ("Oppo Reno 7", 2400), ("Oppo Reno 8", 2600), ("Oppo Reno 10", 3000), ("Oppo F21", 2100), ("Oppo F23", 2300)],
+        "Realme": [("Realme C55", 1400), ("Realme 9 Pro", 2000), ("Realme 10 Pro", 2200), ("Realme 11 Pro", 2400), ("Realme 11 Pro+", 2800), ("Narzo 60", 2000), ("GT Neo 3", 2600)],
+        "Google": [("Pixel 6a", 4200), ("Pixel 7", 5200), ("Pixel 7 Pro", 6800), ("Pixel 8", 6500), ("Pixel 8 Pro", 8500)],
+        "Motorola": [("Moto G32", 1400), ("Moto G54", 1700), ("Moto G73", 2000), ("Edge 40", 2800)],
+        "Nothing": [("Phone 1", 3200), ("Phone 2", 4200), ("Phone 2a", 2600)],
+        "iQOO": [("iQOO Neo 7", 2400), ("iQOO Z7", 1900), ("iQOO 11", 3400)],
+    }
+    frac = {"battery": 0.4, "charging_port": 0.28, "speaker": 0.22, "back_panel": 0.35, "camera": 0.6}
+    def r(x): return int(round(x / 10.0)) * 10
+    brands, models, services = [], [], []
+    for i, (bname, mlist) in enumerate(data.items()):
+        bid = new_id()
+        brands.append({"id": bid, "name": bname, "active": True, "order": i, "image": f"https://logo.clearbit.com/{bname.split()[0].lower()}.com"})
+        for mname, sp in mlist:
+            mid = new_id()
+            models.append({"id": mid, "brand_id": bid, "name": mname, "active": True, "image": PHONE_IMG})
+            prices = {"screen": sp}
+            for k, f in frac.items():
+                prices[k] = r(sp * f)
+            for k, n, _ in issues_def:
+                services.append({"id": new_id(), "model_id": mid, "issue": k, "issue_name": n, "base_price": prices[k], "override_price": None, "active": True})
+    return {"brands": brands, "issues": issues, "models": models, "services": services}
+
+
+def build_sell_dataset_v3(new_id):
+    data = {
+        "Apple": [("iPhone 8", 6000), ("iPhone X", 10000), ("iPhone XR", 12000), ("iPhone 11", 16000), ("iPhone 11 Pro", 22000), ("iPhone 12", 24000), ("iPhone 12 Pro", 30000), ("iPhone 13", 32000), ("iPhone 13 Pro", 42000), ("iPhone 14", 46000), ("iPhone 14 Pro", 60000), ("iPhone 15", 68000), ("iPhone 15 Pro Max", 95000)],
+        "Samsung": [("Galaxy S20", 15000), ("Galaxy S21", 18000), ("Galaxy S22", 26000), ("Galaxy S23", 38000), ("Galaxy S24 Ultra", 70000), ("Galaxy A54", 14000), ("Galaxy A34", 10000), ("Galaxy Note 20", 22000), ("Galaxy M34", 8000)],
+        "OnePlus": [("OnePlus 9", 16000), ("OnePlus 10 Pro", 30000), ("OnePlus 11", 34000), ("Nord 3", 14000), ("Nord CE 3", 10000)],
+        "Xiaomi": [("Redmi Note 12", 7000), ("Redmi Note 13 Pro", 12000), ("Xiaomi 13", 28000), ("Poco F5", 16000)],
+        "Vivo": [("Vivo V27", 12000), ("Vivo V29", 16000), ("Vivo T2", 9000)],
+        "Oppo": [("Oppo Reno 8", 13000), ("Oppo Reno 10", 18000)],
+        "Realme": [("Realme 11 Pro", 9000), ("GT Neo 3", 12000)],
+        "Google": [("Pixel 6a", 12000), ("Pixel 7", 21000), ("Pixel 8", 32000)],
+        "Nothing": [("Phone 1", 12000), ("Phone 2", 22000)],
+        "Motorola": [("Edge 40", 14000), ("Moto G73", 8000)],
+    }
+    out = []
+    for brand, mlist in data.items():
+        for model, base in mlist:
+            out.append({"id": new_id(), "brand": brand, "model": model, "base_price": base, "demandScore": 1.0, "image": SELL_BANNER, "active": True})
+    return out
+
+
 def build_seed(new_id, now_iso):
     ts = now_iso()
 
@@ -25,7 +129,9 @@ def build_seed(new_id, now_iso):
         "currency": "₹",
         "deliveryCharge": 49,
         "supportPhone": "9906000000",
-        "theme": {"primary": "#F94C10"},
+        "theme": {"primary": "#FF6A00"},
+        "features": {"wallet": True, "referral": True, "spin": True, "flash": True},
+        "builderVersion": 2,
     }
 
     # ----- Repair brands / models / issues / services -----
@@ -159,26 +265,7 @@ def build_seed(new_id, now_iso):
     ]
 
     # ----- Dynamic homepage sections -----
-    sections = [
-        {"id": new_id(), "type": "banner", "title": "Hero Banner", "visible": True, "order": 0,
-         "config": {"slides": [
-             {"heading": "Phone broken? We come to you.", "sub": "30-min doorstep repair in Jammu", "image": REPAIR_IMG, "cta": "Book Repair", "link": "/repair"},
-             {"heading": "Sell your old phone", "sub": "Instant price. Free pickup.", "image": SELL_BANNER, "cta": "Get Quote", "link": "/sell"},
-             {"heading": "Accessories from ₹0", "sub": "Free products + fast delivery", "image": SHOP_BANNER, "cta": "Shop Now", "link": "/shop"},
-         ]}},
-        {"id": new_id(), "type": "repair_service", "title": "Repair in 30 Minutes", "visible": True, "order": 1,
-         "config": {"badge": "30 MIN GUARANTEE", "image": REPAIR_IMG2, "cta": "Start Repair", "link": "/repair"}},
-        {"id": new_id(), "type": "flash_sale", "title": "⚡ Flash Sale", "visible": True, "order": 2,
-         "config": {"tag": "flash", "timer": 7200, "subtitle": "Ends soon — grab it fast"}},
-        {"id": new_id(), "type": "shop_products", "title": "Featured Accessories", "visible": True, "order": 3,
-         "config": {"tag": "featured"}},
-        {"id": new_id(), "type": "sell_phone", "title": "Sell Your Phone", "visible": True, "order": 4,
-         "config": {"image": SELL_BANNER, "subtitle": "Best price guaranteed", "cta": "Sell Now", "link": "/sell"}},
-        {"id": new_id(), "type": "buy_phone", "title": "Certified Refurbished Phones", "visible": True, "order": 5,
-         "config": {"subtitle": "Up to 50% off with warranty"}},
-        {"id": new_id(), "type": "referral", "title": "Refer & Earn ₹100", "visible": True, "order": 6,
-         "config": {"reward": 100, "subtitle": "Invite friends, earn wallet cash"}},
-    ]
+    sections = build_sections_v2(new_id)
 
     return {
         "settings": settings,

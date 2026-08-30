@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 
 export function Section({ title, children, action }) {
@@ -39,4 +39,27 @@ export function Price({ price, mrp }) {
       {mrp > price && <span className="text-xs text-n500 line-through">₹{Number(mrp).toLocaleString("en-IN")}</span>}
     </div>
   );
+}
+
+export function CountUp({ value, prefix = "₹", className = "" }) {
+  const [display, setDisplay] = useState(value || 0);
+  const prev = useRef(value || 0);
+  useEffect(() => {
+    const from = prev.current;
+    const to = value || 0;
+    prev.current = to;
+    if (from === to) { setDisplay(to); return; }
+    const start = performance.now();
+    const dur = 650;
+    let raf;
+    const tick = (t) => {
+      const p = Math.min(1, (t - start) / dur);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setDisplay(Math.round(from + (to - from) * eased));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [value]);
+  return <span className={className}>{prefix}{Number(display).toLocaleString("en-IN")}</span>;
 }

@@ -5,9 +5,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 :root {
-  --fx-primary: #F94C10;
-  --fx-primary-hover: #E03B00;
-  --fx-primary-light: #FFF0EB;
+  --fx-primary: #FF6A00;
+  --fx-primary-hover: #E85F00;
+  --fx-primary-light: #FFF1E8;
   --fx-bg: #F8F7F5;
   --fx-paper: #FFFFFF;
   --fx-n900: #121110;
@@ -67,6 +67,33 @@ body {
   animation: fx-shimmer 1.4s infinite;
 }
 
+/* Premium click-highlight interaction system */
+.fx-selectable {
+  transition: transform .18s cubic-bezier(.2,.8,.2,1), box-shadow .18s ease, background-color .18s ease, border-color .18s ease;
+  border: 2px solid transparent;
+}
+.fx-selectable:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(0,0,0,.08); }
+.fx-selectable:active { transform: scale(.97); }
+.fx-selectable-active {
+  border-color: #FF6A00 !important;
+  box-shadow: 0 0 0 3px rgba(255,106,0,.18), 0 10px 28px rgba(255,106,0,.20) !important;
+  transform: scale(1.04);
+  background: #FFF7F1 !important;
+}
+@keyframes fx-glow { 0%,100% { box-shadow: 0 0 0 0 rgba(255,106,0,.5); } 50% { box-shadow: 0 0 0 6px rgba(255,106,0,0); } }
+.fx-glow-badge { animation: fx-glow 1.8s infinite; }
+
+@keyframes fx-speed { 0% { transform: translateX(-140%); opacity: 0; } 25% { opacity: 1; } 100% { transform: translateX(240%); opacity: 0; } }
+@keyframes fx-pop { 0% { transform: scale(.9); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+
+/* ripple */
+.fx-ripple { position: relative; overflow: hidden; }
+.fx-ripple::after {
+  content: ""; position: absolute; inset: 0; background: radial-gradient(circle, rgba(255,255,255,.5) 10%, transparent 10.01%);
+  background-repeat: no-repeat; background-position: 50%; transform: scale(10); opacity: 0; transition: transform .5s, opacity 1s;
+}
+.fx-ripple:active::after { transform: scale(0); opacity: .4; transition: 0s; }
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -75,19 +102,19 @@ body {
     --card-foreground: 20 6% 7%;
     --popover: 0 0% 100%;
     --popover-foreground: 20 6% 7%;
-    --primary: 15 94% 52%;
+    --primary: 25 100% 50%;
     --primary-foreground: 0 0% 100%;
     --secondary: 30 10% 92%;
     --secondary-foreground: 20 6% 7%;
     --muted: 30 8% 95%;
     --muted-foreground: 25 5% 47%;
-    --accent: 15 100% 96%;
-    --accent-foreground: 15 94% 40%;
+    --accent: 25 100% 95%;
+    --accent-foreground: 25 100% 42%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
     --border: 30 10% 89%;
     --input: 30 10% 89%;
-    --ring: 15 94% 52%;
+    --ring: 25 100% 50%;
     --radius: 1rem;
   }
 }

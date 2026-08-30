@@ -15,6 +15,8 @@ from typing import List, Optional, Dict, Any
 import bcrypt
 import jwt
 import razorpay
+import asyncio
+from notifications import notify_order
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, UploadFile, File
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from starlette.middleware.cors import CORSMiddleware
@@ -124,6 +126,9 @@ class SettingsInput(BaseModel):
     deliveryCharge: Optional[float] = None
     supportPhone: Optional[str] = None
     city: Optional[str] = None
+    features: Optional[Dict[str, Any]] = None
+    chatbot: Optional[Dict[str, Any]] = None
+    referralReward: Optional[float] = None
 
 
 class SectionInput(BaseModel):
@@ -164,6 +169,33 @@ class PaymentVerifyInput(BaseModel):
     razorpay_order_id: str
     razorpay_payment_id: str
     razorpay_signature: str
+
+
+class WalletAddInput(BaseModel):
+    amount: float
+    note: Optional[str] = None
+    payment: Dict[str, Any] = Field(default_factory=dict)
+
+
+class WalletSpendInput(BaseModel):
+    amount: float
+    note: Optional[str] = None
+
+
+class ChatMessageInput(BaseModel):
+    text: str
+    topic: Optional[str] = "general"
+
+
+class ChatReplyInput(BaseModel):
+    userId: str
+    text: str
+
+
+class ChatAIInput(BaseModel):
+    text: str
+    topic: Optional[str] = "general"
+    page: Optional[str] = "Home"
 
 
 # ---------------------------------------------------------------------------
@@ -388,6 +420,7 @@ async def create_order(inp: OrderInput, user: dict = Depends(get_current_user)):
         "status": "pending", "created_at": now_iso(),
     }
     await db.orders.insert_one(order)
+    asyncio.create_task(asyncio.to_thread(notify_order, dict(order), "pending"))
     return clean(order)
 
 
@@ -395,6 +428,135 @@ async def create_order(inp: OrderInput, user: dict = Depends(get_current_user)):
 async def my_orders(user: dict = Depends(get_current_user)):
     docs = await db.orders.find({"userId": user["id"]}).sort("created_at", -1).to_list(500)
     return [clean(d) for d in docs]
+
+
+# ---------------------------------------------------------------------------
+# Wallet
+# ---------------------------------------------------------------------------
+@api.get("/wallet")
+async def get_wallet(user: dict = Depends(get_current_user)):
+    u = await db.users.find_one({"id": user["id"]})
+    txns = await db.wallet_txns.find({"userId": user["id"]}).sort("created_at", -1).to_list(200)
+    return {"balance": u.get("wallet", 0), "transactions": [clean(t) for t in txns]}
+
+
+@api.post("/wallet/add")
+async def wallet_add(inp: WalletAddInput, user: dict = Depends(get_current_user)):
+    if inp.amount <= 0:
+        raise HTTPException(status_code=400, detail="Invalid amount")
+    await db.users.update_one({"id": user["id"]}, {"$inc": {"wallet": inp.amount}})
+    txn = {"id": new_id(), "userId": user["id"], "type": "credit", "amount": inp.amount,
+           "note": inp.note or "Added via Razorpay", "payment": inp.payment, "created_at": now_iso()}
+    await db.wallet_txns.insert_one(txn)
+    u = await db.users.find_one({"id": user["id"]})
+    return {"balance": u.get("wallet", 0), "transaction": clean(txn)}
+
+
+@api.post("/wallet/spend")
+async def wallet_spend(inp: WalletSpendInput, user: dict = Depends(get_current_user)):
+    if inp.amount <= 0:
+        raise HTTPException(status_code=400, detail="Invalid amount")
+    u = await db.users.find_one({"id": user["id"]})
+    if u.get("wallet", 0) < inp.amount:
+        raise HTTPException(status_code=400, detail="Insufficient wallet balance")
+    await db.users.update_one({"id": user["id"]}, {"$inc": {"wallet": -inp.amount}})
+    txn = {"id": new_id(), "userId": user["id"], "type": "debit", "amount": inp.amount,
+           "note": inp.note or "Paid via wallet", "created_at": now_iso()}
+    await db.wallet_txns.insert_one(txn)
+    u = await db.users.find_one({"id": user["id"]})
+    return {"balance": u.get("wallet", 0), "transaction": clean(txn)}
+
+
+# ---------------------------------------------------------------------------
+# Chat support (replies are manual — from admin only, no auto-bot)
+# ---------------------------------------------------------------------------
+@api.post("/chat/message")
+async def chat_message(inp: ChatMessageInput, user: dict = Depends(get_current_user)):
+    umsg = {"id": new_id(), "userId": user["id"], "userName": user.get("name"), "sender": "user",
+            "text": inp.text, "topic": inp.topic, "created_at": now_iso(), "read": False}
+    await db.chat_messages.insert_one(umsg)
+    return {"messages": [clean(umsg)]}
+
+
+FALLBACK_REPLY = "I'm here to help! You can book a 30-min doorstep repair, get an instant sell price, or shop accessories. What would you like to do?"
+
+
+@api.post("/chat/ai")
+async def chat_ai(inp: ChatAIInput, user: dict = Depends(get_current_user)):
+    umsg = {"id": new_id(), "userId": user["id"], "userName": user.get("name"), "sender": "user",
+            "text": inp.text, "topic": inp.topic, "page": inp.page, "created_at": now_iso(), "read": False}
+    await db.chat_messages.insert_one(umsg)
+
+    # dynamic real data
+    prods = [clean(p) for p in await db.products.find({"active": True, "tags": "featured"}).to_list(6)]
+    prod_txt = "; ".join(f"{p['name']} ₹{p['price']}" for p in prods) or "various accessories"
+    coupons = [clean(c) for c in await db.coupons.find({"active": True}).to_list(10)]
+    coup_txt = "; ".join(f"{c['code']} ({'₹'+str(c['value']) if c['type']=='flat' else str(c['value'])+'%'} off, min ₹{c.get('min_order',0)})" for c in coupons) or "none right now"
+    last = await db.orders.find_one({"userId": user["id"]}, sort=[("created_at", -1)])
+    last_txt = f"{last['type']} order — status {last['status']}, ₹{last['amount']}" if last else "no orders yet"
+    cfg = await db.settings.find_one({"id": "appConfig"}) or {}
+    bot_cfg = cfg.get("chatbot", {})
+    faqs = bot_cfg.get("faqs", [])
+    faq_txt = " | ".join(f"Q:{f.get('q')} A:{f.get('a')}" for f in faqs) or "none"
+
+    system = (
+        "You are FixitZ Assistant — a friendly, smart, slightly persuasive sales + support assistant for FixitZ, "
+        "a 30-minute doorstep mobile repair, accessories shop, and buy/sell used-phone app in Jammu, India. "
+        "Keep replies SHORT (2-4 sentences), simple India-focused English (a little Hindi is okay if the user uses it). "
+        "ALWAYS end with one clear next-step CTA like 'Book repair now', 'Check your phone's price', 'View products', or 'Apply this coupon'. "
+        "Guide the user toward action: booking a repair, selling a phone, buying a product, or applying a coupon. "
+        "Repair has a 30-minute doorstep guarantee. For exact prices tell them to pick brand→model→issue on the Repair page, "
+        "or answer condition questions on the Sell page for an instant estimate. Use ONLY the real data below; never invent prices. "
+        f"Current page the user is on: {inp.page}. "
+        f"Featured products: {prod_txt}. Active coupons: {coup_txt}. "
+        f"User's wallet balance: ₹{user.get('wallet', 0)}. User's latest order: {last_txt}. "
+        f"Admin FAQs: {faq_txt}."
+    )
+
+    prior = [clean(m) for m in await db.chat_messages.find({"userId": user["id"]}).sort("created_at", -1).to_list(9)]
+    prior = list(reversed(prior[1:]))  # exclude the just-added msg, oldest first
+    transcript = "\n".join(f"{'User' if m['sender']=='user' else 'Assistant'}: {m['text']}" for m in prior)
+    content = (f"Conversation so far:\n{transcript}\n\nUser: {inp.text}" if transcript else inp.text)
+
+    reply = FALLBACK_REPLY
+    try:
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        chat = LlmChat(api_key=os.environ["EMERGENT_LLM_KEY"], session_id=user["id"], system_message=system).with_model("openai", "gpt-5.4")
+        reply = await chat.send_message(UserMessage(text=content))
+    except Exception as e:
+        logger.error(f"AI chat error: {e}")
+
+    bot = {"id": new_id(), "userId": user["id"], "userName": "FixitZ AI", "sender": "bot",
+           "text": reply, "topic": inp.topic, "created_at": now_iso(), "read": True}
+    await db.chat_messages.insert_one(bot)
+    return {"messages": [clean(umsg), clean(bot)]}
+
+
+@api.get("/chat/messages")
+async def chat_messages(user: dict = Depends(get_current_user)):
+    docs = await db.chat_messages.find({"userId": user["id"]}).sort("created_at", 1).to_list(500)
+    return [clean(d) for d in docs]
+
+
+@api.get("/admin/chat")
+async def admin_chat(user: dict = Depends(require_admin)):
+    docs = [clean(d) for d in await db.chat_messages.find({}).sort("created_at", 1).to_list(3000)]
+    threads = {}
+    for m in docs:
+        t = threads.setdefault(m["userId"], {"userId": m["userId"], "userName": m.get("userName"), "messages": [], "lastAt": ""})
+        t["messages"].append(m)
+        t["lastAt"] = m["created_at"]
+        if m["sender"] == "user":
+            t["userName"] = m.get("userName")
+    return sorted(threads.values(), key=lambda x: x["lastAt"], reverse=True)
+
+
+@api.post("/admin/chat/reply")
+async def admin_chat_reply(inp: ChatReplyInput, user: dict = Depends(require_admin)):
+    msg = {"id": new_id(), "userId": inp.userId, "userName": "FixitZ Support", "sender": "admin",
+           "text": inp.text, "topic": "general", "created_at": now_iso(), "read": True}
+    await db.chat_messages.insert_one(msg)
+    return clean(msg)
 
 
 # ---------------------------------------------------------------------------
@@ -503,7 +665,9 @@ async def admin_order_status(order_id: str, payload: GenericDoc, user: dict = De
     doc = await db.orders.find_one({"id": order_id})
     if not doc:
         raise HTTPException(status_code=404, detail="Order not found")
-    return clean(doc)
+    doc = clean(doc)
+    asyncio.create_task(asyncio.to_thread(notify_order, dict(doc), status))
+    return doc
 
 
 @api.get("/admin/users")
@@ -596,6 +760,7 @@ async def startup():
     await db.users.create_index("id", unique=True)
     await seed_admin()
     await seed_demo_data()
+    await migrate()
 
 
 async def seed_admin():
@@ -632,6 +797,40 @@ async def seed_demo_data():
 def ADMIN_COLLECTIONS_OR_DB(name):
     coll = ADMIN_COLLECTIONS.get(name)
     return coll if coll is not None else db[name]
+
+
+async def migrate():
+    cfg = await db.settings.find_one({"id": "appConfig"})
+    if not cfg:
+        return
+    updates = {}
+    feats = cfg.get("features", {})
+    feat_defaults = {"wallet": True, "referral": True, "spin": True, "flash": True, "chat": True, "repair": True, "buy": True, "sell": True}
+    merged = {**feat_defaults, **feats}
+    if merged != feats:
+        updates["features"] = merged
+    if "chatbot" not in cfg:
+        updates["chatbot"] = {"greeting": "Hi! 👋 I'm your FixitZ assistant. I can help you book a 30-min repair, get an instant price for your old phone, or find the best accessories. What do you need?", "faqs": []}
+    if cfg.get("builderVersion", 1) < 2:
+        from seed_data import build_sections_v2
+        await db.sections.delete_many({})
+        await db.sections.insert_many(build_sections_v2(new_id))
+        updates["builderVersion"] = 2
+        updates["theme"] = {"primary": "#FF6A00"}
+    if cfg.get("dataVersion", 0) < 3:
+        from seed_data import build_repair_dataset_v3, build_sell_dataset_v3
+        ds = build_repair_dataset_v3(new_id)
+        await db.repair_brands.delete_many({}); await db.repair_brands.insert_many(ds["brands"])
+        await db.repair_issues.delete_many({}); await db.repair_issues.insert_many(ds["issues"])
+        await db.repair_models.delete_many({}); await db.repair_models.insert_many(ds["models"])
+        await db.repair_services.delete_many({}); await db.repair_services.insert_many(ds["services"])
+        sells = build_sell_dataset_v3(new_id)
+        await db.sell_devices.delete_many({}); await db.sell_devices.insert_many(sells)
+        updates["dataVersion"] = 3
+        logger.info(f"Imported {len(ds['models'])} repair models, {len(sells)} sell devices")
+    if updates:
+        await db.settings.update_one({"id": "appConfig"}, {"$set": updates})
+        logger.info("Migration applied")
 
 
 @app.on_event("shutdown")

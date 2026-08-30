@@ -7,11 +7,16 @@ import { Price } from "@/components/common";
 import { useCart } from "@/context/CartContext";
 import { toast } from "sonner";
 
+function useQueryParam(key) {
+  const [sp] = useState(() => new URLSearchParams(window.location.search));
+  return sp.get(key) || "";
+}
+
 export default function Shop() {
   const nav = useNavigate();
   const { add } = useCart();
   const [cat, setCat] = useState(null);
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(useQueryParam("q"));
   const { data: cats = [] } = useQuery({ queryKey: ["cats"], queryFn: () => api.get("/categories").then((r) => r.data) });
   const { data: products = [], isLoading } = useQuery({
     queryKey: ["shop", cat, q], queryFn: () => api.get("/products", { params: { category_id: cat || undefined, q: q || undefined } }).then((r) => r.data),
@@ -44,7 +49,7 @@ export default function Shop() {
               <div className="relative" onClick={() => nav(`/product/${p.id}`)}>
                 <img src={p.image} alt={p.name} className="w-full h-36 object-cover" />
                 {p.tags?.includes("free") && <span className="absolute top-2 left-2 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">FREE</span>}
-                {p.tags?.includes("flash") && <span className="absolute top-2 left-2 bg-fx text-white text-[10px] font-bold px-2 py-0.5 rounded-full">FLASH</span>}
+                {p.tags?.includes("flash") && <span className="absolute top-2 left-2 bg-fx text-white text-[10px] font-bold px-2 py-0.5 rounded-full">🔥 HOT</span>}
                 {disc > 0 && !p.tags?.includes("free") && !p.tags?.includes("flash") && <span className="absolute top-2 left-2 bg-n900 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">-{disc}%</span>}
               </div>
               <div className="p-3">
@@ -58,7 +63,7 @@ export default function Shop() {
           );
         })}
       </div>
-      {!isLoading && !products.length && <p className="text-center text-n500 text-sm py-10">No products found.</p>}
+      {!isLoading && !products.length && <p className="text-center text-n500 text-sm py-10">No products found{q ? ` for "${q}"` : ""}.</p>}
     </div>
   );
 }

@@ -14,9 +14,9 @@ module.exports = {
       },
       colors: {
         fx: {
-          DEFAULT: '#F94C10',
-          hover: '#E03B00',
-          light: '#FFF0EB',
+          DEFAULT: '#FF6A00',
+          hover: '#E85F00',
+          light: '#FFF1E8',
         },
         n900: '#121110',
         n800: '#2A2826',

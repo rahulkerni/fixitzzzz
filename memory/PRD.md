@@ -26,6 +26,14 @@ Shopee-style UX (orange/white/black), everything controlled from admin (no hardc
 - Orders: repair/product/sell/buy, status flow pending→confirmed→in-progress→completed→cancelled.
 - Admin panel controls all of the above with live updates.
 
+## Implemented (2026-08-30 update)
+- ✅ Coupon admin CRUD UI at /admin/coupons (flat/percent, min-order, max-discount cap, expiry, active) — reuses CrudManager, backend generic factory. Verified via UI + curl.
+- ✅ Order notifications engine (`backend/notifications.py`): branded HTML email via SendGrid + SMS via Bulk Blaster (configurable). Fires on order placement (pending) and every admin status change. Non-blocking (asyncio.to_thread), fails safe.
+  - Email LIVE: SendGrid sender = no-reply@fixitz.in (domain fixitZ.in authenticated). Verified 202 send.
+  - SMS DISABLED: awaiting Bulk Blaster endpoint URL + DLT sender ID + template ID. Env keys present (BULKBLASTER_*), send_sms self-skips until configured.
+- ✅ Smart header search routing (AppLayout): repair keywords → /repair, sell/exchange → /sell, refurbished/used → /buy, else /shop. (Fixes "search showed accessories for repair terms".)
+- ✅ Removed intrusive AI chat auto-popup (was hijacking checkout after 10s); chat FAB retained.
+
 ## Implemented (2026-06-29)
 - ✅ JWT auth (register/login/me), admin seeding (shamthemanu@gmail.com), role gating.
 - ✅ Dynamic homepage renderer with 9 section types + seed data.

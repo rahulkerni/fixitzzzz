@@ -14,6 +14,7 @@ export default function Register() {
   const submit = async (e) => {
     e.preventDefault();
     setBusy(true);
+    if (!/^\d{10}$/.test(form.phone.trim())) { toast.error("Enter a valid 10-digit mobile number"); setBusy(false); return; }
     try {
       await register(form);
       toast.success("Account created!");
@@ -31,7 +32,7 @@ export default function Register() {
         <form onSubmit={submit} className="mt-8 space-y-4">
           <input value={form.name} onChange={set("name")} required placeholder="Full name" data-testid="reg-name" className="w-full bg-white rounded-2xl p-4 text-sm outline-none focus:ring-2 ring-fx shadow-sm" />
           <input value={form.email} onChange={set("email")} type="email" required placeholder="Email (mandatory)" data-testid="reg-email" className="w-full bg-white rounded-2xl p-4 text-sm outline-none focus:ring-2 ring-fx shadow-sm" />
-          <input value={form.phone} onChange={set("phone")} required placeholder="Phone number" data-testid="reg-phone" className="w-full bg-white rounded-2xl p-4 text-sm outline-none focus:ring-2 ring-fx shadow-sm" />
+          <input value={form.phone} onChange={set("phone")} required inputMode="numeric" placeholder="Mobile number (10 digits, required)" data-testid="reg-phone" className="w-full bg-white rounded-2xl p-4 text-sm outline-none focus:ring-2 ring-fx shadow-sm" />
           <input value={form.password} onChange={set("password")} type="password" required placeholder="Password" data-testid="reg-password" className="w-full bg-white rounded-2xl p-4 text-sm outline-none focus:ring-2 ring-fx shadow-sm" />
           <button disabled={busy} type="submit" data-testid="reg-submit" className="w-full bg-fx text-white font-bold py-4 rounded-full active:scale-95 transition-transform disabled:opacity-50">{busy ? "Creating…" : "Sign Up"}</button>
         </form>

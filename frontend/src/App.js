@@ -36,6 +36,7 @@ import FlashSale from "@/pages/FlashSale";
 import AdminUsers from "@/admin/AdminUsers";
 import AdminChat from "@/admin/AdminChat";
 import AdminFreeProducts from "@/admin/AdminFreeProducts";
+import AdminPriceRequests from "@/admin/AdminPriceRequests";
 import SearchResults from "@/pages/SearchResults";
 import ThemeInjector from "@/components/ThemeInjector";
 
@@ -83,6 +84,7 @@ export default function App() {
           <Route path="buy" element={<AdminBuy />} />
           <Route path="coupons" element={<AdminCoupons />} />
           <Route path="free-products" element={<AdminFreeProducts />} />
+          <Route path="price-requests" element={<AdminPriceRequests />} />
           <Route path="flash-sale" element={<AdminFlashSale />} />
           <Route path="wallet" element={<AdminWallet />} />
           <Route path="referrals" element={<AdminReferrals />} />

@@ -9,6 +9,7 @@ import { Price } from "@/components/common";
 import { fmt, track, payWithRazorpay } from "@/lib/utils2";
 import { playChime } from "@/lib/sounds";
 import { toast } from "sonner";
+import RequestPriceModal from "@/components/RequestPriceModal";
 
 export default function Repair() {
   const nav = useNavigate();
@@ -20,12 +21,21 @@ export default function Repair() {
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
   const [expanded, setExpanded] = useState(null);
+  const [req, setReq] = useState(null);
 
   const { data: brands = [] } = useQuery({ queryKey: ["rbrands"], queryFn: () => api.get("/repair/brands").then((r) => r.data) });
   const { data: models = [] } = useQuery({ queryKey: ["rmodels", brand?.id], queryFn: () => api.get("/repair/models", { params: { brand_id: brand.id } }).then((r) => r.data), enabled: !!brand });
   const { data: services = [] } = useQuery({ queryKey: ["rservices", model?.id], queryFn: () => api.get("/repair/services", { params: { model_id: model.id } }).then((r) => r.data), enabled: !!model });
 
   useEffect(() => { if (model) { const start = Date.now(); return () => track({ type: "model_view", model: model.name, seconds: Math.round((Date.now() - start) / 1000) }); } }, [model]);
+
+  // 12s helper: if no model/fault chosen, pop the urgent request form
+  useEffect(() => {
+    if (step === 1 || step === 2) {
+      const t = setTimeout(() => setReq((r) => r || { urgent: true }), 12000);
+      return () => clearTimeout(t);
+    }
+  }, [step]);
 
   const back = () => { if (step === 0) nav(-1); else setStep(step - 1); };
 
@@ -95,6 +105,7 @@ export default function Repair() {
                 </button>
               ))}
               {!models.length && <p className="text-n500 text-sm text-center py-6">No models yet.</p>}
+              <button onClick={() => setReq({ urgent: false })} data-testid="repair-other-model" className="w-full mt-1 bg-fx-light text-fx font-bold py-3 rounded-2xl active:scale-95 transition-transform">Can't find your model? Request a price</button>
             </div>
           )}
           {step === 2 && (
@@ -157,6 +168,7 @@ export default function Repair() {
           )}
         </motion.div>
       </AnimatePresence>
+      {req && <RequestPriceModal type="repair" brand={brand?.name} urgent={req.urgent} onClose={() => setReq(null)} />}
     </div>
   );
 }

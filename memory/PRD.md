@@ -34,6 +34,13 @@ Shopee-style UX (orange/white/black), everything controlled from admin (no hardc
 - ✅ Smart header search routing (AppLayout): repair keywords → /repair, sell/exchange → /sell, refurbished/used → /buy, else /shop. (Fixes "search showed accessories for repair terms".)
 - ✅ Removed intrusive AI chat auto-popup (was hijacking checkout after 10s); chat FAB retained.
 
+## Implemented (2026-08-30 wave 6)
+- ✅ Price Request system: customers who can't find their model tap "Request a price" (Sell & Repair) or get an auto-popup after 12s of no selection on Repair. Sends model + phone (+ fault for repair, marked URGENT) to admin via email/SMS. Backend POST /api/price-request, admin GET/PUT /api/admin/price-requests.
+- ✅ Price Request Inbox admin page (/admin/price-requests): see requests, send a quote (auto-texts customer) or close.
+- ✅ "Other Model" option in Sell and Repair flows (RequestPriceModal component).
+- ✅ Section Background Editor confirmed working end-to-end (Homepage Builder bg color applies live on home).
+- Verified: backend curl (create/list/quote). Frontend compiles. NOTE: user is testing this wave MANUALLY (no testing agent run).
+
 ## Implemented (2026-08-30 wave 5)
 - ✅ Combined SEARCH: header search → /search showing BOTH products and repair models. Backend GET /api/search.
 - ✅ Free Product Management admin page /admin/free-products (mark/unmark products free, approve/reject free-order claims). Free-product coupon type added to Coupons admin.

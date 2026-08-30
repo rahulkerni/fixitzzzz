@@ -8,6 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 import { fmt } from "@/lib/utils2";
 import { CountUp } from "@/components/common";
 import { toast } from "sonner";
+import RequestPriceModal from "@/components/RequestPriceModal";
 
 export default function Sell() {
   const nav = useNavigate();
@@ -20,6 +21,7 @@ export default function Sell() {
   const [quote, setQuote] = useState(null);
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
+  const [req, setReq] = useState(null);
 
   const { data: devices = [] } = useQuery({ queryKey: ["sdevices", q], queryFn: () => api.get("/sell/devices", { params: { q: q || undefined } }).then((r) => r.data) });
   const { data: conditions = [] } = useQuery({ queryKey: ["sconds"], queryFn: () => api.get("/sell/conditions").then((r) => r.data) });
@@ -99,6 +101,7 @@ export default function Sell() {
               </button>
             ))}
           </div>
+          <button onClick={() => setReq({ urgent: false })} data-testid="sell-other-model" className="w-full mt-3 bg-fx-light text-fx font-bold py-3 rounded-xl active:scale-95 transition-transform">My model isn't listed — Request a price</button>
         </div>
       )}
 
@@ -177,6 +180,7 @@ export default function Sell() {
           <button onClick={bookPickup} data-testid="sell-book-btn" className="w-full bg-fx text-white font-bold py-4 rounded-full active:scale-95 transition-transform">Book Free Pickup</button>
         </div>
       )}
+      {req && <RequestPriceModal type="sell" urgent={req.urgent} onClose={() => setReq(null)} />}
     </div>
   );
 }

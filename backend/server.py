@@ -210,6 +210,15 @@ class ChatAIInput(BaseModel):
     page: Optional[str] = "Home"
 
 
+class PriceRequestInput(BaseModel):
+    type: str  # repair | sell
+    brand: Optional[str] = None
+    model: str
+    phone: str
+    fault: Optional[str] = None
+    urgent: Optional[bool] = False
+
+
 # ---------------------------------------------------------------------------
 # Pricing engines
 # ---------------------------------------------------------------------------
@@ -941,6 +950,45 @@ async def admin_bulk_import(payload: GenericDoc, user: dict = Depends(require_ad
             if band.get(k) is not None:
                 await _set_service(mid, k, names.get(k, k), band[k], "overwrite")
     return {"created_models": created_models, "created_brands": created_brands, "skipped": skipped}
+
+
+@api.post("/price-request")
+async def create_price_request(inp: PriceRequestInput):
+    doc = {"id": new_id(), "type": inp.type, "brand": inp.brand, "model": inp.model,
+           "phone": inp.phone, "fault": inp.fault, "urgent": bool(inp.urgent),
+           "status": "new", "quote": None, "reply": None, "created_at": now_iso()}
+    await db.price_requests.insert_one(doc)
+    settings = await db.settings.find_one({"id": "appConfig"}) or {}
+    admin_email = settings.get("adminAlertEmail") or os.environ.get("ADMIN_EMAIL", "")
+    admin_phone = settings.get("adminAlertPhone") or settings.get("supportPhone") or ""
+    from notifications import send_email, send_sms
+    tag = "URGENT " if inp.urgent else ""
+    body = f"{tag}Price request ({inp.type}): {inp.brand or ''} {inp.model} | Fault: {inp.fault or '-'} | Phone: {inp.phone}"
+    if admin_email:
+        asyncio.create_task(asyncio.to_thread(send_email, admin_email, f"{tag}Price Request — {inp.model}", f"<div style='font-family:Arial'><h3>{tag}New Price Request</h3><p>{body}</p></div>"))
+    if admin_phone:
+        asyncio.create_task(asyncio.to_thread(send_sms, admin_phone, body))
+    return clean(doc)
+
+
+@api.get("/admin/price-requests")
+async def admin_list_price_requests(user: dict = Depends(require_admin)):
+    docs = await db.price_requests.find({}).sort("created_at", -1).to_list(500)
+    return [clean(d) for d in docs]
+
+
+@api.put("/admin/price-requests/{rid}")
+async def admin_update_price_request(rid: str, payload: GenericDoc, user: dict = Depends(require_admin)):
+    upd = {k: v for k, v in payload.data.items() if k in ("status", "quote", "reply")}
+    await db.price_requests.update_one({"id": rid}, {"$set": upd})
+    doc = await db.price_requests.find_one({"id": rid})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Request not found")
+    if upd.get("quote") is not None and doc.get("phone"):
+        from notifications import send_sms
+        msg = f"FixitZ: Your quote for {doc.get('model')} is Rs.{upd['quote']}. {upd.get('reply') or 'Reply to confirm booking.'}"
+        asyncio.create_task(asyncio.to_thread(send_sms, doc["phone"], msg))
+    return clean(doc)
 
 
 # --- Generic collection CRUD (defined last so literal routes take priority) ---

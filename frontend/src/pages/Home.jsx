@@ -161,6 +161,7 @@ function FreeProductsSection({ title, config }) {
 /* ---------------- Flash sale ---------------- */
 function FlashSaleSection({ title, config }) {
   const { add } = useCart();
+  const nav = useNavigate();
   const [left, setLeft] = useState(config.timer || 7200);
   useEffect(() => { const t = setInterval(() => setLeft((p) => (p > 0 ? p - 1 : config.timer || 7200)), 1000); return () => clearInterval(t); }, []);
   const { data: products = [] } = useQuery({ queryKey: ["flash", config.tag], queryFn: () => api.get("/products", { params: { tag: config.tag || "flash" } }).then((r) => r.data) });
@@ -170,13 +171,16 @@ function FlashSaleSection({ title, config }) {
     <section className="mt-6 mx-4 rounded-3xl p-4 shadow-md" style={{ background: config.bg || "#FFF1E8" }} data-testid="section-flash">
       <div className="flex items-center justify-between mb-3">
         <h2 className="font-display text-xl text-n900 flex items-center gap-1"><Zap className="w-5 h-5 text-fx fill-fx" />{title}</h2>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
+          <button onClick={() => nav("/flash")} data-testid="flash-see-all" className="text-fx text-xs font-bold flex items-center">See all <ChevronRight className="w-3.5 h-3.5" /></button>
+          <div className="flex items-center gap-1">
           {parts.map((v, i) => (
             <React.Fragment key={i}>
               <motion.span key={v} initial={{ scale: 1.2 }} animate={{ scale: 1 }} className="bg-n900 text-white rounded-md px-1.5 py-1 text-sm font-bold font-mono">{v}</motion.span>
               {i < 2 && <span className="text-n900 font-bold">:</span>}
             </React.Fragment>
           ))}
+          </div>
         </div>
       </div>
       <div className="flex gap-3 overflow-x-auto no-scrollbar">{products.map((p) => <ProductCard key={p.id} p={p} onAdd={(x) => { add(x); toast.success("Added!"); }} />)}</div>

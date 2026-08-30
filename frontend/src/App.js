@@ -29,6 +29,10 @@ import AdminSell from "@/admin/AdminSell";
 import AdminBuy from "@/admin/AdminBuy";
 import AdminOrders from "@/admin/AdminOrders";
 import AdminCoupons from "@/admin/AdminCoupons";
+import AdminFlashSale from "@/admin/AdminFlashSale";
+import AdminWallet from "@/admin/AdminWallet";
+import AdminReferrals from "@/admin/AdminReferrals";
+import FlashSale from "@/pages/FlashSale";
 import AdminUsers from "@/admin/AdminUsers";
 import AdminChat from "@/admin/AdminChat";
 
@@ -53,6 +57,7 @@ export default function App() {
           <Route path="/cart" element={<Cart />} />
           <Route path="/sell" element={<Sell />} />
           <Route path="/buy" element={<Buy />} />
+          <Route path="/flash" element={<FlashSale />} />
           <Route path="/wallet" element={<Protected><Wallet /></Protected>} />
           <Route path="/orders" element={<Protected><Orders /></Protected>} />
           <Route path="/account" element={<Account />} />
@@ -72,6 +77,9 @@ export default function App() {
           <Route path="sell" element={<AdminSell />} />
           <Route path="buy" element={<AdminBuy />} />
           <Route path="coupons" element={<AdminCoupons />} />
+          <Route path="flash-sale" element={<AdminFlashSale />} />
+          <Route path="wallet" element={<AdminWallet />} />
+          <Route path="referrals" element={<AdminReferrals />} />
           <Route path="orders" element={<AdminOrders />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="chat" element={<AdminChat />} />

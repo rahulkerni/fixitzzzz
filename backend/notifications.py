@@ -123,3 +123,59 @@ def notify_order(order: dict, status: str):
         send_email(email, f"FixitZ — {title} (#{short_id})", html)
     if phone:
         send_sms(phone, sms)
+
+
+def notify_customer_new_order(order: dict):
+    """Instant confirmation to the customer right after placing an order."""
+    short_id = str(order.get("id", ""))[:8].upper()
+    email = order.get("userEmail")
+    phone = order.get("userPhone")
+    name = order.get("userName") or "there"
+    label = _order_label(order)
+    amount = order.get("amount", 0)
+    if email:
+        html = f"""
+        <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto">
+          <div style="background:#FF6A00;padding:20px;border-radius:16px 16px 0 0">
+            <h1 style="color:#fff;margin:0;font-size:22px">FixitZ</h1>
+            <p style="color:#fff;margin:4px 0 0;font-size:12px">30-Min Doorstep Repair · Jammu</p>
+          </div>
+          <div style="border:1px solid #eee;border-top:none;padding:20px;border-radius:0 0 16px 16px">
+            <h2 style="color:#1a1a1a;font-size:18px">Order #{short_id} confirmed</h2>
+            <p style="color:#444">Hi {name}, we've received your order. We'll contact you soon.</p>
+            <table style="width:100%;font-size:14px;color:#333;margin-top:12px">
+              <tr><td style="padding:4px 0;color:#888">Items</td><td style="text-align:right">{label}</td></tr>
+              <tr><td style="padding:4px 0;color:#888">Amount</td><td style="text-align:right">₹{amount}</td></tr>
+            </table>
+          </div>
+        </div>"""
+        send_email(email, f"FixitZ — Order #{short_id} confirmed", html)
+    if phone:
+        send_sms(phone, f"Order #{short_id} confirmed. We'll contact you soon.")
+
+
+def notify_admin_new_order(order: dict, admin_email: str = "", admin_phone: str = ""):
+    """Instant alert to the store admin when a new order arrives."""
+    short_id = str(order.get("id", ""))[:8].upper()
+    name = order.get("userName") or "Customer"
+    phone = order.get("userPhone") or "-"
+    label = _order_label(order)
+    amount = order.get("amount", 0)
+    if admin_email:
+        html = f"""
+        <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto">
+          <div style="background:#111;padding:18px;border-radius:14px 14px 0 0">
+            <h1 style="color:#FF6A00;margin:0;font-size:20px">FixitZ · New Order</h1>
+          </div>
+          <div style="border:1px solid #eee;border-top:none;padding:18px;border-radius:0 0 14px 14px">
+            <p style="color:#444;font-size:15px">New order received from <b>{name}</b>, {phone}. Check dashboard.</p>
+            <table style="width:100%;font-size:14px;color:#333;margin-top:8px">
+              <tr><td style="padding:3px 0;color:#888">Order</td><td style="text-align:right">#{short_id}</td></tr>
+              <tr><td style="padding:3px 0;color:#888">Items</td><td style="text-align:right">{label}</td></tr>
+              <tr><td style="padding:3px 0;color:#888">Amount</td><td style="text-align:right">₹{amount}</td></tr>
+            </table>
+          </div>
+        </div>"""
+        send_email(admin_email, f"New Order #{short_id}", html)
+    if admin_phone:
+        send_sms(admin_phone, f"New Order #{short_id} from {name} ({phone})")

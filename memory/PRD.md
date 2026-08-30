@@ -34,6 +34,16 @@ Shopee-style UX (orange/white/black), everything controlled from admin (no hardc
 - ✅ Smart header search routing (AppLayout): repair keywords → /repair, sell/exchange → /sell, refurbished/used → /buy, else /shop. (Fixes "search showed accessories for repair terms".)
 - ✅ Removed intrusive AI chat auto-popup (was hijacking checkout after 10s); chat FAB retained.
 
+## Implemented (2026-08-30 update)
+- ✅ Order notifications: admin new-order alert (email+SMS, exact templates) + customer confirmation ("Order #X confirmed. We'll contact you soon."). Fires on placement (customer+admin) and status changes (customer). Non-blocking. Admin contact via Settings adminAlertEmail/adminAlertPhone.
+- ✅ Sound system: customer success chime on order placement (Cart + Repair), admin new-order alert ding (AdminOrders, with Sound On/Off toggle), splash whoosh on load. Web Audio, no assets (`frontend/src/lib/sounds.js`).
+- ✅ Flash Sale — dedicated ADMIN page /admin/flash-sale (add/remove products, per-product flash_price, countdown timer via settings.flashSaleEndsAt) + customer page /flash (live countdown + grid, linked from home "See all"). Endpoint GET /api/flash-sale.
+- ✅ Wallet management ADMIN page /admin/wallet (add/deduct any user's balance + view transactions). POST /api/admin/wallet/adjust, GET /api/admin/wallet/txns.
+- ✅ Referral system — capture referral_code at signup (sets referredBy, credits referrer settings.referralReward=₹100 to wallet) + ADMIN tracking page /admin/referrals (referrers, referred users, rewards). GET /api/admin/referrals.
+- ✅ Coupon admin CRUD UI at /admin/coupons.
+- ✅ Smart header search routing (repair/sell/buy/shop) + removed intrusive AI chat auto-popup.
+- All above verified: backend via curl, frontend via testing agent (6/6 flows 100%).
+
 ## Implemented (2026-06-29)
 - ✅ JWT auth (register/login/me), admin seeding (shamthemanu@gmail.com), role gating.
 - ✅ Dynamic homepage renderer with 9 section types + seed data.

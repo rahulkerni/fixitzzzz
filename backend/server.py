@@ -16,7 +16,7 @@ import bcrypt
 import jwt
 import razorpay
 import asyncio
-from notifications import notify_order
+from notifications import notify_order, notify_customer_new_order, notify_admin_new_order
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, UploadFile, File
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from starlette.middleware.cors import CORSMiddleware
@@ -110,6 +110,7 @@ class RegisterInput(BaseModel):
     email: EmailStr
     phone: str
     password: str
+    referral_code: Optional[str] = None
 
 
 class LoginInput(BaseModel):
@@ -129,6 +130,9 @@ class SettingsInput(BaseModel):
     features: Optional[Dict[str, Any]] = None
     chatbot: Optional[Dict[str, Any]] = None
     referralReward: Optional[float] = None
+    adminAlertEmail: Optional[str] = None
+    adminAlertPhone: Optional[str] = None
+    flashSaleEndsAt: Optional[str] = None
 
 
 class SectionInput(BaseModel):
@@ -241,13 +245,23 @@ async def register(inp: RegisterInput):
     email = inp.email.lower()
     if await db.users.find_one({"email": email}):
         raise HTTPException(status_code=400, detail="Email already registered")
+    ref_code = (inp.referral_code or "").strip().upper()
+    referrer = await db.users.find_one({"referralCode": ref_code}) if ref_code else None
     user = {
         "id": new_id(), "name": inp.name, "email": email, "phone": inp.phone,
         "password_hash": hash_password(inp.password), "role": "user",
         "wallet": 0, "referralCode": inp.name[:3].upper() + new_id()[:5].upper(),
+        "referredBy": referrer["referralCode"] if referrer else None,
+        "referredByName": referrer.get("name") if referrer else None,
         "created_at": now_iso(),
     }
     await db.users.insert_one(user)
+    if referrer:
+        settings = await db.settings.find_one({"id": "appConfig"}) or {}
+        reward = settings.get("referralReward", 100)
+        await db.users.update_one({"id": referrer["id"]}, {"$inc": {"wallet": reward}})
+        await db.wallet_txns.insert_one({"id": new_id(), "userId": referrer["id"], "type": "credit",
+            "amount": reward, "note": f"Referral bonus — {inp.name}", "created_at": now_iso()})
     token = create_token(user["id"], email, "user")
     safe = clean(dict(user)); safe.pop("password_hash", None)
     return {"token": token, "user": safe}
@@ -340,6 +354,13 @@ async def product_detail(pid: str):
     return clean(doc)
 
 
+@api.get("/flash-sale")
+async def flash_sale():
+    settings = await db.settings.find_one({"id": "appConfig"}) or {}
+    docs = await db.products.find({"active": True, "tags": "flash"}).to_list(500)
+    return {"endsAt": settings.get("flashSaleEndsAt"), "products": [clean(d) for d in docs]}
+
+
 @api.get("/sell/devices")
 async def sell_devices(q: Optional[str] = None):
     query: Dict[str, Any] = {"active": True}
@@ -420,7 +441,12 @@ async def create_order(inp: OrderInput, user: dict = Depends(get_current_user)):
         "status": "pending", "created_at": now_iso(),
     }
     await db.orders.insert_one(order)
-    asyncio.create_task(asyncio.to_thread(notify_order, dict(order), "pending"))
+    settings = await db.settings.find_one({"id": "appConfig"}) or {}
+    admin_email = settings.get("adminAlertEmail") or os.environ.get("ADMIN_EMAIL", "")
+    admin_phone = settings.get("adminAlertPhone") or settings.get("supportPhone") or ""
+    snapshot = clean(dict(order))
+    asyncio.create_task(asyncio.to_thread(notify_customer_new_order, snapshot))
+    asyncio.create_task(asyncio.to_thread(notify_admin_new_order, snapshot, admin_email, admin_phone))
     return clean(order)
 
 
@@ -703,6 +729,52 @@ async def track(payload: GenericDoc):
 async def admin_alerts(user: dict = Depends(require_admin)):
     docs = await db.admin_alerts.find({}).sort("created_at", -1).to_list(100)
     return [clean(d) for d in docs]
+
+
+@api.post("/admin/wallet/adjust")
+async def admin_wallet_adjust(payload: GenericDoc, user: dict = Depends(require_admin)):
+    user_id = payload.data.get("userId")
+    amount = float(payload.data.get("amount") or 0)
+    note = payload.data.get("note")
+    target = await db.users.find_one({"id": user_id})
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    if not amount:
+        raise HTTPException(status_code=400, detail="Amount required")
+    new_bal = target.get("wallet", 0) + amount
+    if new_bal < 0:
+        raise HTTPException(status_code=400, detail="Balance cannot go negative")
+    await db.users.update_one({"id": user_id}, {"$inc": {"wallet": amount}})
+    txn = {"id": new_id(), "userId": user_id, "type": "credit" if amount >= 0 else "debit",
+           "amount": abs(amount), "note": note or ("Admin credit" if amount >= 0 else "Admin debit"),
+           "created_at": now_iso()}
+    await db.wallet_txns.insert_one(txn)
+    return {"balance": new_bal, "transaction": clean(txn)}
+
+
+@api.get("/admin/wallet/txns")
+async def admin_wallet_txns(user_id: str, user: dict = Depends(require_admin)):
+    txns = await db.wallet_txns.find({"userId": user_id}).sort("created_at", -1).to_list(500)
+    return [clean(t) for t in txns]
+
+
+@api.get("/admin/referrals")
+async def admin_referrals(user: dict = Depends(require_admin)):
+    users = [clean(u) for u in await db.users.find({}).to_list(5000)]
+    ref_txns = await db.wallet_txns.find({"note": {"$regex": "Referral bonus"}}).to_list(5000)
+    out = []
+    for u in users:
+        referred = [r for r in users if r.get("referredBy") == u.get("referralCode")]
+        if not referred:
+            continue
+        reward = sum(t.get("amount", 0) for t in ref_txns if t.get("userId") == u.get("id"))
+        out.append({
+            "id": u.get("id"), "name": u.get("name"), "email": u.get("email"),
+            "referralCode": u.get("referralCode"), "count": len(referred), "reward": reward,
+            "referred": [{"name": r.get("name"), "email": r.get("email"), "created_at": r.get("created_at")} for r in referred],
+        })
+    out.sort(key=lambda x: x["count"], reverse=True)
+    return out
 
 
 # --- Generic collection CRUD (defined last so literal routes take priority) ---

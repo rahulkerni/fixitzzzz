@@ -1,6 +1,6 @@
 import React from "react";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Settings, LayoutList, Package, Wrench, RefreshCw, Smartphone, ShoppingCart, Users, ArrowLeft, Blocks, Image, ToggleRight, MessageCircle, Grid3x3, Ticket } from "lucide-react";
+import { LayoutDashboard, Settings, LayoutList, Package, Wrench, RefreshCw, Smartphone, ShoppingCart, Users, ArrowLeft, Blocks, Image, ToggleRight, MessageCircle, Grid3x3, Ticket, Zap, Wallet, Gift } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
 const LINKS = [
@@ -12,10 +12,13 @@ const LINKS = [
   { to: "/admin/chat", label: "Chat Support", icon: MessageCircle },
   { to: "/admin/sections", label: "All Sections", icon: LayoutList },
   { to: "/admin/products", label: "Shop Products", icon: Package },
+  { to: "/admin/flash-sale", label: "Flash Sale", icon: Zap },
   { to: "/admin/repair", label: "Repair Engine", icon: Wrench },
   { to: "/admin/sell", label: "Sell Engine", icon: RefreshCw },
   { to: "/admin/buy", label: "Buy / Refurbished", icon: Smartphone },
   { to: "/admin/coupons", label: "Coupons", icon: Ticket },
+  { to: "/admin/wallet", label: "Wallet", icon: Wallet },
+  { to: "/admin/referrals", label: "Referrals", icon: Gift },
   { to: "/admin/orders", label: "Orders", icon: ShoppingCart },
   { to: "/admin/users", label: "Users", icon: Users },
   { to: "/admin/settings", label: "App Settings", icon: Settings },

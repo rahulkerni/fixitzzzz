@@ -7,7 +7,7 @@ import { toast } from "sonner";
 export default function Register() {
   const nav = useNavigate();
   const { register } = useAuth();
-  const [form, setForm] = useState({ name: "", email: "", phone: "", password: "" });
+  const [form, setForm] = useState({ name: "", email: "", phone: "", password: "", referral_code: "" });
   const [busy, setBusy] = useState(false);
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
@@ -34,6 +34,7 @@ export default function Register() {
           <input value={form.email} onChange={set("email")} type="email" required placeholder="Email (mandatory)" data-testid="reg-email" className="w-full bg-white rounded-2xl p-4 text-sm outline-none focus:ring-2 ring-fx shadow-sm" />
           <input value={form.phone} onChange={set("phone")} required inputMode="numeric" placeholder="Mobile number (10 digits, required)" data-testid="reg-phone" className="w-full bg-white rounded-2xl p-4 text-sm outline-none focus:ring-2 ring-fx shadow-sm" />
           <input value={form.password} onChange={set("password")} type="password" required placeholder="Password" data-testid="reg-password" className="w-full bg-white rounded-2xl p-4 text-sm outline-none focus:ring-2 ring-fx shadow-sm" />
+          <input value={form.referral_code} onChange={set("referral_code")} placeholder="Referral code (optional)" data-testid="reg-referral" className="w-full bg-white rounded-2xl p-4 text-sm outline-none focus:ring-2 ring-fx shadow-sm uppercase" />
           <button disabled={busy} type="submit" data-testid="reg-submit" className="w-full bg-fx text-white font-bold py-4 rounded-full active:scale-95 transition-transform disabled:opacity-50">{busy ? "Creating…" : "Sign Up"}</button>
         </form>
         <p className="text-center text-sm text-n500 mt-6">Have an account? <Link to="/login" className="text-fx font-bold" data-testid="go-login">Login</Link></p>

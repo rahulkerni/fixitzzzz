@@ -15,6 +15,7 @@ export default function AdminSettings() {
       appName: form.appName, tagline: form.tagline, logo: form.logo,
       currency: form.currency, deliveryCharge: Number(form.deliveryCharge),
       supportPhone: form.supportPhone, city: form.city,
+      adminAlertEmail: form.adminAlertEmail, adminAlertPhone: form.adminAlertPhone,
     });
     qc.invalidateQueries({ queryKey: ["settings"] });
     toast.success("Settings updated");
@@ -25,6 +26,8 @@ export default function AdminSettings() {
     { k: "city", l: "City" }, { k: "currency", l: "Currency Symbol" },
     { k: "deliveryCharge", l: "Delivery Charge (₹)", t: "number" },
     { k: "supportPhone", l: "Support Phone" }, { k: "logo", l: "Logo URL" },
+    { k: "adminAlertEmail", l: "Admin Alert Email (new-order alerts)" },
+    { k: "adminAlertPhone", l: "Admin Alert Phone (new-order SMS)" },
   ];
 
   return (

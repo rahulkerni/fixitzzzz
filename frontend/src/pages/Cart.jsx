@@ -6,6 +6,7 @@ import api, { apiErr } from "@/lib/api";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { fmt, payWithRazorpay } from "@/lib/utils2";
+import { playChime } from "@/lib/sounds";
 import { toast } from "sonner";
 
 export default function Cart() {
@@ -51,7 +52,7 @@ export default function Cart() {
       address: { text: address, phone: mobile, name },
       payment: paymentInfo,
     });
-    clear(); toast.success("Order placed!"); nav("/orders");
+    clear(); playChime(); toast.success("Order placed!"); nav("/orders");
   };
 
   const checkout = async () => {

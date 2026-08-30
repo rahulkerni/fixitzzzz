@@ -7,6 +7,7 @@ import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { Price } from "@/components/common";
 import { fmt, track, payWithRazorpay } from "@/lib/utils2";
+import { playChime } from "@/lib/sounds";
 import { toast } from "sonner";
 
 export default function Repair() {
@@ -42,6 +43,7 @@ export default function Repair() {
           address: { text: address, phone }, payment: { id: resp.razorpay_payment_id, status: "paid" },
         });
         toast.success("Repair booked! Technician arriving in 30 min.");
+        playChime();
         nav("/orders");
       },
       onFail: () => toast.error("Payment cancelled"),

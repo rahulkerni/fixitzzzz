@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -60,9 +60,13 @@ function CategoryGridSection({ title, config }) {
           return (
             <motion.button key={idx} whileTap={{ scale: 0.9 }} onClick={() => nav(it.link)} data-testid={`cat-grid-${it.label}`}
               className="flex flex-col items-center gap-2">
-              <div className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-sm" style={{ background: it.color || "#FFF1E8" }}>
-                <Icon className="w-7 h-7 text-n900" strokeWidth={2.1} />
-              </div>
+              {it.image ? (
+                <img src={it.image} alt={it.label} className="w-16 h-16 rounded-2xl object-cover shadow-sm" />
+              ) : (
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-sm" style={{ background: it.color || "#FFF1E8" }}>
+                  <Icon className="w-7 h-7 text-n900" strokeWidth={2.1} />
+                </div>
+              )}
               <span className="text-[11px] font-semibold text-n800 text-center leading-tight">{it.label}</span>
             </motion.button>
           );
@@ -102,12 +106,12 @@ function WalletSection({ title, config }) {
 }
 
 /* ---------------- Product card ---------------- */
-function ProductCard({ p, onAdd, wide }) {
+function ProductCard({ p, onAdd, wide, compact }) {
   const nav = useNavigate();
   const disc = p.mrp > p.price ? Math.round((1 - p.price / p.mrp) * 100) : 0;
   const stockLeft = p.stock && p.stock <= 20 ? p.stock : null;
   return (
-    <motion.div whileTap={{ scale: 0.97 }} className={`${wide ? "min-w-[160px] w-[160px]" : "min-w-[150px] w-[150px]"} bg-white rounded-2xl overflow-hidden shadow-md shadow-black/5`} data-testid={`product-card-${p.id}`}>
+    <motion.div whileTap={{ scale: 0.97 }} className={`${compact ? "min-w-[120px] w-[120px]" : wide ? "min-w-[160px] w-[160px]" : "min-w-[150px] w-[150px]"} bg-white rounded-2xl overflow-hidden shadow-md shadow-black/5`} data-testid={`product-card-${p.id}`}>
       <div className="relative" onClick={() => nav(`/product/${p.id}`)}>
         <img src={p.image} alt={p.name} className="w-full h-32 object-cover" />
         {p.tags?.includes("free") && <Badge className="bg-emerald-500">FREE</Badge>}
@@ -127,6 +131,20 @@ function ProductCard({ p, onAdd, wide }) {
 }
 function Badge({ children, className }) {
   return <span className={`absolute top-2 left-2 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow ${className}`}>{children}</span>;
+}
+
+function useAutoScroll(ref, count) {
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || count < 3) return;
+    const t = setInterval(() => {
+      if (!el) return;
+      const max = el.scrollWidth - el.clientWidth;
+      const next = el.scrollLeft + 132;
+      el.scrollTo({ left: next >= max - 4 ? 0 : next, behavior: "smooth" });
+    }, 2800);
+    return () => clearInterval(t);
+  }, [ref, count]);
 }
 
 function ProductsSection({ title, config }) {
@@ -165,6 +183,8 @@ function FlashSaleSection({ title, config }) {
   const [left, setLeft] = useState(config.timer || 7200);
   useEffect(() => { const t = setInterval(() => setLeft((p) => (p > 0 ? p - 1 : config.timer || 7200)), 1000); return () => clearInterval(t); }, []);
   const { data: products = [] } = useQuery({ queryKey: ["flash", config.tag], queryFn: () => api.get("/products", { params: { tag: config.tag || "flash" } }).then((r) => r.data) });
+  const scrollRef = useRef(null);
+  useAutoScroll(scrollRef, products.length);
   const parts = [Math.floor(left / 3600), Math.floor((left % 3600) / 60), left % 60].map((v) => String(v).padStart(2, "0"));
   if (!products.length) return null;
   return (
@@ -183,7 +203,27 @@ function FlashSaleSection({ title, config }) {
           </div>
         </div>
       </div>
-      <div className="flex gap-3 overflow-x-auto no-scrollbar">{products.map((p) => <ProductCard key={p.id} p={p} onAdd={(x) => { add(x); toast.success("Added!"); }} />)}</div>
+      <div ref={scrollRef} className="flex gap-3 overflow-x-auto no-scrollbar scroll-smooth">{products.map((p) => <ProductCard key={p.id} p={p} compact onAdd={(x) => { add(x); toast.success("Added!"); }} />)}</div>
+    </section>
+  );
+}
+
+/* ---------------- Exclusive deals ---------------- */
+function ExclusiveDealsSection({ title, config }) {
+  const { add } = useCart();
+  const nav = useNavigate();
+  const scrollRef = useRef(null);
+  const { data: products = [] } = useQuery({ queryKey: ["exclusive", config.tag], queryFn: () => api.get("/products", { params: { tag: config.tag || "exclusive" } }).then((r) => r.data) });
+  useAutoScroll(scrollRef, products.length);
+  if (!products.length) return null;
+  return (
+    <section className="mt-6 mx-4 rounded-3xl p-4 shadow-md" style={{ background: config.bg || "#F3E8FF" }} data-testid="section-exclusive">
+      <div className="flex items-center justify-between mb-1">
+        <h2 className="font-display text-xl text-n900 flex items-center gap-1"><Sparkles className="w-5 h-5 text-fx" />{title}</h2>
+        <button onClick={() => nav("/shop")} data-testid="exclusive-see-all" className="text-fx text-xs font-bold flex items-center">See all <ChevronRight className="w-3.5 h-3.5" /></button>
+      </div>
+      <p className="text-xs text-n500 mb-3">{config.subtitle}</p>
+      <div ref={scrollRef} className="flex gap-3 overflow-x-auto no-scrollbar scroll-smooth">{products.map((p) => <ProductCard key={p.id} p={p} compact onAdd={(x) => { add(x); toast.success("Added!"); }} />)}</div>
     </section>
   );
 }
@@ -328,6 +368,7 @@ const RENDERERS = {
   repair_service: RepairServiceSection, shop_products: ProductsSection, flash_sale: FlashSaleSection,
   free_products: FreeProductsSection, sell_phone: SellSection, buy_phone: BuySection,
   order_tracking: OrderTrackingSection, referral: ReferralSection, video: VideoSection, custom: CustomSection,
+  exclusive_deals: ExclusiveDealsSection,
 };
 const FEATURE_MAP = { wallet: "wallet", referral: "referral", flash_sale: "flash", repair_service: "repair", sell_phone: "sell", buy_phone: "buy" };
 

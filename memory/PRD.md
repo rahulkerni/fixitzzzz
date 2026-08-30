@@ -34,6 +34,14 @@ Shopee-style UX (orange/white/black), everything controlled from admin (no hardc
 - ✅ Smart header search routing (AppLayout): repair keywords → /repair, sell/exchange → /sell, refurbished/used → /buy, else /shop. (Fixes "search showed accessories for repair terms".)
 - ✅ Removed intrusive AI chat auto-popup (was hijacking checkout after 10s); chat FAB retained.
 
+## Implemented (2026-08-30 wave 3)
+- ✅ Fixed product-detail CTA hidden behind bottom nav; now shows "Add to Cart" + "Buy Now" above nav (bottom-[74px]). Same fix for Cart checkout bar.
+- ✅ Flash Deals home section: auto-scrolls, compact cards (~3 visible), "See all" → /flash.
+- ✅ New Exclusive Discounts home section (type exclusive_deals, tag "exclusive", auto-scroll). Seeded via migrate; editable in Homepage Builder.
+- ✅ Category icons support image/picture (image URL overrides lucide icon) — admin + home render.
+- ✅ Admin control of referral reward amount (Settings → Referral Reward) via settings.referralReward.
+- Verified: backend curl + testing agent (6/6 flows 100%).
+
 ## Implemented (2026-08-30 update)
 - ✅ Order notifications: admin new-order alert (email+SMS, exact templates) + customer confirmation ("Order #X confirmed. We'll contact you soon."). Fires on placement (customer+admin) and status changes (customer). Non-blocking. Admin contact via Settings adminAlertEmail/adminAlertPhone.
 - ✅ Sound system: customer success chime on order placement (Cart + Repair), admin new-order alert ding (AdminOrders, with Sound On/Off toggle), splash whoosh on load. Web Audio, no assets (`frontend/src/lib/sounds.js`).

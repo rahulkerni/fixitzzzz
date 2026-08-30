@@ -8,6 +8,7 @@ import { toast } from "sonner";
 const CARD_STYLES = [{ value: "flat", label: "Flat" }, { value: "elevated", label: "Elevated" }, { value: "outline", label: "Outline" }];
 const TYPE_LABEL = {
   banner: "Hero Banner", category_grid: "Category Grid", wallet: "Wallet Card", flash_sale: "Flash Deals",
+  exclusive_deals: "Exclusive Discounts",
   repair_service: "Repair Service", shop_products: "Shop Products", free_products: "Free Products",
   sell_phone: "Sell Phone", buy_phone: "Buy Phone", order_tracking: "Order Tracking", referral: "Referral", video: "Video", custom: "Custom",
 };

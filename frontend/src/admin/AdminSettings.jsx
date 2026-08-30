@@ -16,6 +16,7 @@ export default function AdminSettings() {
       currency: form.currency, deliveryCharge: Number(form.deliveryCharge),
       supportPhone: form.supportPhone, city: form.city,
       adminAlertEmail: form.adminAlertEmail, adminAlertPhone: form.adminAlertPhone,
+      referralReward: form.referralReward === "" || form.referralReward == null ? null : Number(form.referralReward),
     });
     qc.invalidateQueries({ queryKey: ["settings"] });
     toast.success("Settings updated");
@@ -28,6 +29,7 @@ export default function AdminSettings() {
     { k: "supportPhone", l: "Support Phone" }, { k: "logo", l: "Logo URL" },
     { k: "adminAlertEmail", l: "Admin Alert Email (new-order alerts)" },
     { k: "adminAlertPhone", l: "Admin Alert Phone (new-order SMS)" },
+    { k: "referralReward", l: "Referral Reward (₹ per friend)", t: "number" },
   ];
 
   return (

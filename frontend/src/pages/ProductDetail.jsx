@@ -17,7 +17,7 @@ export default function ProductDetail() {
   if (!p) return <p className="text-center text-n500 py-10">Product not found.</p>;
 
   return (
-    <div className="pb-24" data-testid="product-detail">
+    <div className="pb-32" data-testid="product-detail">
       <div className="relative">
         <img src={p.image} alt={p.name} className="w-full h-80 object-cover" />
         <button onClick={() => nav(-1)} className="absolute top-4 left-4 p-2 rounded-full bg-white/90 shadow active:scale-90 transition-transform"><ChevronLeft className="w-5 h-5" /></button>
@@ -36,9 +36,11 @@ export default function ProductDetail() {
           </div>
         </div>
       </div>
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] p-4 bg-white border-t border-n200 z-30">
-        <button onClick={() => { add(p); toast.success("Added to cart"); nav("/cart"); }} data-testid="pd-add-cart"
-          className="w-full bg-fx text-white font-bold py-4 rounded-full active:scale-95 transition-transform">Add to Cart</button>
+      <div className="fixed bottom-[74px] left-1/2 -translate-x-1/2 w-full max-w-[480px] p-4 bg-white border-t border-n200 z-30 flex gap-3">
+        <button onClick={() => { add(p); toast.success("Added to cart"); }} data-testid="pd-add-cart"
+          className="flex-1 bg-fx-light text-fx font-bold py-4 rounded-full active:scale-95 transition-transform border border-fx/30">Add to Cart</button>
+        <button onClick={() => { add(p); nav("/cart"); }} data-testid="pd-buy-now"
+          className="flex-1 bg-fx text-white font-bold py-4 rounded-full active:scale-95 transition-transform">Buy Now</button>
       </div>
     </div>
   );

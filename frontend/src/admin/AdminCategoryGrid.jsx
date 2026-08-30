@@ -41,7 +41,7 @@ export default function AdminCategoryGrid() {
           const Icon = ICONS[it.icon] || Sparkles;
           return (
             <div key={i} className="bg-white border border-n200 rounded-xl p-3 flex gap-3" data-testid={`cat-item-${i}`}>
-              <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0" style={{ background: it.color }}><Icon className="w-6 h-6 text-n900" /></div>
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 overflow-hidden" style={{ background: it.color }}>{it.image ? <img src={it.image} alt="" className="w-full h-full object-cover" /> : <Icon className="w-6 h-6 text-n900" />}</div>
               <div className="flex-1 space-y-2">
                 <input value={it.label} onChange={(e) => setItem(i, "label", e.target.value)} placeholder="Label" data-testid={`cat-label-${i}`} className="w-full bg-n200/30 rounded-lg p-2 text-sm outline-none" />
                 <div className="flex gap-2">
@@ -50,6 +50,7 @@ export default function AdminCategoryGrid() {
                   </select>
                   <input value={it.link} onChange={(e) => setItem(i, "link", e.target.value)} placeholder="/link" className="w-24 bg-n200/30 rounded-lg p-2 text-sm outline-none" />
                 </div>
+                <input value={it.image || ""} onChange={(e) => setItem(i, "image", e.target.value)} placeholder="Image URL (optional — overrides icon)" data-testid={`cat-image-${i}`} className="w-full bg-n200/30 rounded-lg p-2 text-sm outline-none" />
                 <div className="flex items-center gap-1.5">
                   {COLORS.map((c) => <button key={c} onClick={() => setItem(i, "color", c)} className={`w-6 h-6 rounded-full border-2 ${it.color === c ? "border-fx" : "border-transparent"}`} style={{ background: c }} />)}
                   <button onClick={() => removeItem(i)} data-testid={`del-cat-${i}`} className="ml-auto text-red-500 p-1"><Trash2 className="w-4 h-4" /></button>

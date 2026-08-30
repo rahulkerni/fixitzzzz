@@ -900,6 +900,19 @@ async def migrate():
         await db.sell_devices.delete_many({}); await db.sell_devices.insert_many(sells)
         updates["dataVersion"] = 3
         logger.info(f"Imported {len(ds['models'])} repair models, {len(sells)} sell devices")
+    if not await db.sections.find_one({"type": "exclusive_deals"}):
+        flash = await db.sections.find_one({"type": "flash_sale"})
+        order = (flash.get("order", 5) + 1) if flash else 6
+        await db.sections.insert_one({
+            "id": new_id(), "type": "exclusive_deals", "title": "Exclusive Discounts",
+            "visible": True, "order": order,
+            "config": {"tag": "exclusive", "bg": "#F3E8FF", "subtitle": "Handpicked deals just for you"},
+        })
+        prods = await db.products.find({"active": True}).to_list(20)
+        for p in prods[:3]:
+            tags = set(p.get("tags", [])); tags.add("exclusive")
+            await db.products.update_one({"id": p["id"]}, {"$set": {"tags": list(tags)}})
+        logger.info("Seeded exclusive_deals section")
     if updates:
         await db.settings.update_one({"id": "appConfig"}, {"$set": updates})
         logger.info("Migration applied")

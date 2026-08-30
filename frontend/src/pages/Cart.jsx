@@ -136,7 +136,7 @@ export default function Cart() {
         </div>
       )}
 
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-white border-t border-n200 p-4 z-30">
+      <div className="fixed bottom-[74px] left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-white border-t border-n200 p-4 z-30">
         <div className="text-xs text-n500 flex justify-between"><span>Subtotal</span><span>{fmt(subtotal)}</span></div>
         <div className="text-xs text-n500 flex justify-between"><span>Delivery</span><span>{fmt(delivery)}</span></div>
         {discount > 0 && <div className="text-xs text-emerald-600 flex justify-between"><span>Discount</span><span>-{fmt(discount)}</span></div>}

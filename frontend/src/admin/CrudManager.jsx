@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Pencil, Trash2, X } from "lucide-react";
 import api from "@/lib/api";
+import ImageUpload from "@/components/ImageUpload";
 import { toast } from "sonner";
 
 /**
@@ -106,6 +107,8 @@ export default function CrudManager({ collection, title, fields, columns, defaul
                     </select>
                   ) : f.type === "boolean" ? (
                     <div className="mt-1"><button type="button" onClick={() => setForm({ ...form, [f.key]: !form[f.key] })} data-testid={`field-${f.key}`} className={`px-4 py-2 rounded-lg text-sm font-bold ${form[f.key] ? "bg-emerald-500 text-white" : "bg-n200 text-n800"}`}>{form[f.key] ? "Visible / Active" : "Hidden / Inactive"}</button></div>
+                  ) : f.type === "image" ? (
+                    <div className="mt-1"><ImageUpload value={form[f.key]} onChange={(url) => setForm({ ...form, [f.key]: url })} /></div>
                   ) : f.type === "tags" ? (
                     <input value={Array.isArray(form[f.key]) ? form[f.key].join(", ") : (form[f.key] ?? "")} onChange={(e) => setForm({ ...form, [f.key]: e.target.value })} placeholder="free, featured, flash" data-testid={`field-${f.key}`} className="w-full mt-1 bg-n200/30 rounded-lg p-2.5 text-sm outline-none focus:ring-2 ring-fx" />
                   ) : (

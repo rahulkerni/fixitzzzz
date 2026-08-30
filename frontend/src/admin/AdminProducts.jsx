@@ -86,7 +86,7 @@ export default function AdminProducts() {
           { key: "price", label: "Price (₹, 0 = free)", type: "number" },
           { key: "mrp", label: "MRP (₹)", type: "number" },
           { key: "category_id", label: "Category", type: "select", options: catOptions },
-          { key: "image", label: "Image URL", type: "text" },
+          { key: "image", label: "Image", type: "image" },
           { key: "stock", label: "Stock", type: "number" },
           { key: "tags", label: "Tags", type: "tags", help: "free, featured, flash" },
           { key: "active", label: "Active", type: "boolean" },

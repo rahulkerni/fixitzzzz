@@ -34,6 +34,17 @@ Shopee-style UX (orange/white/black), everything controlled from admin (no hardc
 - ✅ Smart header search routing (AppLayout): repair keywords → /repair, sell/exchange → /sell, refurbished/used → /buy, else /shop. (Fixes "search showed accessories for repair terms".)
 - ✅ Removed intrusive AI chat auto-popup (was hijacking checkout after 10s); chat FAB retained.
 
+## Implemented (2026-08-30 wave 4)
+- ✅ Direct image UPLOAD across the admin panel (object storage) replacing all URL inputs: Products, Refurbished/Buy, Banners, Category icons, and Logo. Reusable `ImageUpload` component → POST /api/admin/upload, served via public GET /api/files/{path}. Backend `storage.py` (Emergent object storage, EMERGENT_LLM_KEY).
+- ✅ Header logo now uploadable from Admin → Settings; header renders the logo image when set.
+- ✅ "The Full Shop" section added at the end of the homepage (type full_shop, seeded).
+- ✅ Theme switched to Shopee Orange: primary #EE4D2D, accent #D0011B, light #FFF0EC (tailwind + index.css + splash + razorpay theme + admin builder).
+- Verified: backend curl (upload/serve 200) + testing agent (6/6 flows 100%).
+
+## Deferred / next (requested, not yet built)
+- Repair pricing TIERS + JSON bulk import: auto-derive Battery/Speaker/Charging/Back from Screen price bands; "Bulk Import · Models + Screen Prices" (paste JSON, auto-create brands, auto-fill from tier bands).
+- Free product per-person LIMIT + account approval workflow.
+
 ## Implemented (2026-08-30 wave 3)
 - ✅ Fixed product-detail CTA hidden behind bottom nav; now shows "Add to Cart" + "Buy Now" above nav (bottom-[74px]). Same fix for Cart checkout bar.
 - ✅ Flash Deals home section: auto-scrolls, compact cards (~3 visible), "See all" → /flash.

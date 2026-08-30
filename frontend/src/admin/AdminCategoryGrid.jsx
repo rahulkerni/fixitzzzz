@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2, Wrench, ShoppingBag, RefreshCw, Smartphone, Wallet, Gift, Sparkles, Package, Zap, BatteryCharging, Plug, Volume2, Camera, Layers } from "lucide-react";
 import api from "@/lib/api";
+import ImageUpload from "@/components/ImageUpload";
 import { toast } from "sonner";
 
 const ICONS = { wrench: Wrench, "shopping-bag": ShoppingBag, "refresh-cw": RefreshCw, smartphone: Smartphone, wallet: Wallet, gift: Gift, sparkles: Sparkles, package: Package, zap: Zap, "battery-charging": BatteryCharging, plug: Plug, "volume-2": Volume2, camera: Camera, layers: Layers };
@@ -50,7 +51,7 @@ export default function AdminCategoryGrid() {
                   </select>
                   <input value={it.link} onChange={(e) => setItem(i, "link", e.target.value)} placeholder="/link" className="w-24 bg-n200/30 rounded-lg p-2 text-sm outline-none" />
                 </div>
-                <input value={it.image || ""} onChange={(e) => setItem(i, "image", e.target.value)} placeholder="Image URL (optional — overrides icon)" data-testid={`cat-image-${i}`} className="w-full bg-n200/30 rounded-lg p-2 text-sm outline-none" />
+                <ImageUpload value={it.image} onChange={(url) => setItem(i, "image", url)} />
                 <div className="flex items-center gap-1.5">
                   {COLORS.map((c) => <button key={c} onClick={() => setItem(i, "color", c)} className={`w-6 h-6 rounded-full border-2 ${it.color === c ? "border-fx" : "border-transparent"}`} style={{ background: c }} />)}
                   <button onClick={() => removeItem(i)} data-testid={`del-cat-${i}`} className="ml-auto text-red-500 p-1"><Trash2 className="w-4 h-4" /></button>

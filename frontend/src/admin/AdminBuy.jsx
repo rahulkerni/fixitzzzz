@@ -19,7 +19,7 @@ export default function AdminBuy() {
           { key: "price", label: "Price (₹)", type: "number" },
           { key: "condition", label: "Condition", type: "select", options: [{ value: "excellent", label: "Excellent" }, { value: "good", label: "Good" }, { value: "fair", label: "Fair" }] },
           { key: "stock", label: "Stock", type: "number" },
-          { key: "image", label: "Image URL", type: "text" },
+          { key: "image", label: "Image", type: "image" },
           { key: "warranty", label: "Warranty", type: "text" },
           { key: "active", label: "Active", type: "boolean" },
         ]}

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2, Image as ImageIcon } from "lucide-react";
 import api from "@/lib/api";
+import ImageUpload from "@/components/ImageUpload";
 import { toast } from "sonner";
 
 const BLANK = { heading: "", sub: "", image: "", cta: "Shop Now", link: "/shop", startAt: "", endAt: "" };
@@ -39,8 +40,8 @@ export default function AdminBanners() {
               <button onClick={() => removeSlide(i)} data-testid={`del-slide-${i}`} className="text-red-500 p-1"><Trash2 className="w-4 h-4" /></button></div>
             <div className="grid md:grid-cols-3 gap-3">
               <div className="md:row-span-2">
-                {s.image ? <img src={s.image} alt="" className="w-full h-28 object-cover rounded-lg" /> : <div className="w-full h-28 bg-n200/40 rounded-lg flex items-center justify-center text-n500"><ImageIcon className="w-6 h-6" /></div>}
-                <input value={s.image} onChange={(e) => setSlide(i, "image", e.target.value)} placeholder="Image URL" data-testid={`slide-image-${i}`} className="w-full mt-2 bg-n200/30 rounded-lg p-2 text-xs outline-none" />
+                {s.image && <img src={s.image} alt="" className="w-full h-28 object-cover rounded-lg mb-2" />}
+                <ImageUpload value={s.image} onChange={(url) => setSlide(i, "image", url)} />
               </div>
               <Field label="Heading" value={s.heading} onChange={(v) => setSlide(i, "heading", v)} tid={`slide-heading-${i}`} />
               <Field label="CTA Text" value={s.cta} onChange={(v) => setSlide(i, "cta", v)} tid={`slide-cta-${i}`} />

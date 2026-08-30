@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
+import ImageUpload from "@/components/ImageUpload";
 import { toast } from "sonner";
 
 export default function AdminSettings() {
@@ -39,7 +40,11 @@ export default function AdminSettings() {
         {F.map((f) => (
           <div key={f.k}>
             <label className="text-xs font-semibold text-n800">{f.l}</label>
-            <input type={f.t || "text"} value={form[f.k] ?? ""} onChange={set(f.k)} data-testid={`setting-${f.k}`} className="w-full mt-1 bg-n200/30 rounded-lg p-2.5 text-sm outline-none focus:ring-2 ring-fx" />
+            {f.k === "logo" ? (
+              <div className="mt-1"><ImageUpload value={form.logo} onChange={(url) => setForm({ ...form, logo: url })} /></div>
+            ) : (
+              <input type={f.t || "text"} value={form[f.k] ?? ""} onChange={set(f.k)} data-testid={`setting-${f.k}`} className="w-full mt-1 bg-n200/30 rounded-lg p-2.5 text-sm outline-none focus:ring-2 ring-fx" />
+            )}
           </div>
         ))}
         <button onClick={save} data-testid="settings-save" className="bg-fx text-white font-bold px-6 py-3 rounded-lg active:scale-95 transition-transform">Save Settings</button>

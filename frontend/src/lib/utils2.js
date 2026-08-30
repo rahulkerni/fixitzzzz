@@ -19,7 +19,7 @@ export async function payWithRazorpay({ amount, user, onSuccess, onFail }) {
       description: "FixitZ Payment",
       order_id: data.order_id,
       prefill: { name: user?.name || "", email: user?.email || "", contact: user?.phone || "" },
-      theme: { color: "#FF6A00" },
+      theme: { color: "#EE4D2D" },
       handler: async (resp) => {
         try {
           await api.post("/payments/verify", {

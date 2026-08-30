@@ -19,7 +19,7 @@ function SectionRow({ section, onToggle, onEdit }) {
     <Reorder.Item value={section} dragListener={false} dragControls={controls}
       className="bg-white border border-n200 rounded-xl p-3 flex items-center gap-3 mb-2 shadow-sm" data-testid={`builder-row-${section.id}`}>
       <div onPointerDown={(e) => controls.start(e)} className="cursor-grab active:cursor-grabbing touch-none text-n500" data-testid={`drag-${section.id}`}><GripVertical className="w-5 h-5" /></div>
-      <div className="w-2.5 h-2.5 rounded-full" style={{ background: section.config?.bg || section.config?.highlight ? "#FF6A00" : "#E6E4DF" }} />
+      <div className="w-2.5 h-2.5 rounded-full" style={{ background: section.config?.bg || section.config?.highlight ? "#EE4D2D" : "#E6E4DF" }} />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-n900 truncate">{section.title}</p>
         <p className="text-[11px] text-n500">{TYPE_LABEL[section.type] || section.type}{section.config?.highlight ? " • highlighted" : ""}</p>
@@ -80,7 +80,7 @@ export default function AdminHomepageBuilder() {
           <p className="text-xs font-bold uppercase text-n500 mb-2">Live Preview</p>
           <div className="bg-[#F8F7F5] border border-n200 rounded-2xl p-3 space-y-2 max-h-[70vh] overflow-y-auto" data-testid="builder-preview">
             {list.filter((s) => s.visible).map((s) => (
-              <div key={s.id} className="rounded-xl p-3 text-sm font-semibold shadow-sm" style={{ background: s.config?.bg || "#fff", border: s.config?.highlight ? "1.5px solid #FF6A00" : "1px solid #E6E4DF" }}>
+              <div key={s.id} className="rounded-xl p-3 text-sm font-semibold shadow-sm" style={{ background: s.config?.bg || "#fff", border: s.config?.highlight ? "1.5px solid #EE4D2D" : "1px solid #E6E4DF" }}>
                 <span className="text-[10px] uppercase text-n500 block">{TYPE_LABEL[s.type]}</span>
                 {s.title}
                 {s.config?.highlight && <Sparkles className="w-3.5 h-3.5 text-fx inline ml-1" />}

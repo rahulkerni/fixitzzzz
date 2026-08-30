@@ -18,6 +18,8 @@ import razorpay
 import asyncio
 from notifications import notify_order, notify_customer_new_order, notify_admin_new_order
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, UploadFile, File
+from fastapi.responses import Response
+from storage import init_storage, put_object, get_object
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -37,6 +39,9 @@ rzp_client = razorpay.Client(auth=(os.environ['RAZORPAY_KEY_ID'], os.environ['RA
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("fixitz")
+
+APP_NAME = "fixitz"
+MIME = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "gif": "image/gif", "webp": "image/webp"}
 
 app = FastAPI(title="FixitZ API")
 api = APIRouter(prefix="/api")
@@ -777,6 +782,30 @@ async def admin_referrals(user: dict = Depends(require_admin)):
     return out
 
 
+@api.post("/admin/upload")
+async def admin_upload(file: UploadFile = File(...), user: dict = Depends(require_admin)):
+    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in (file.filename or "") else "bin"
+    path = f"{APP_NAME}/uploads/{new_id()}.{ext}"
+    data = await file.read()
+    ct = file.content_type or MIME.get(ext, "application/octet-stream")
+    result = put_object(path, data, ct)
+    rp = result.get("path", path)
+    await db.files.insert_one({"id": new_id(), "storage_path": rp, "original_filename": file.filename,
+        "content_type": ct, "size": result.get("size", len(data)), "is_deleted": False, "created_at": now_iso()})
+    return {"path": rp, "url": f"/api/files/{rp}"}
+
+
+@api.get("/files/{path:path}")
+async def serve_file(path: str):
+    rec = await db.files.find_one({"storage_path": path, "is_deleted": False})
+    try:
+        data, got_ct = get_object(path)
+    except Exception:
+        raise HTTPException(status_code=404, detail="File not found")
+    ct = (rec.get("content_type") if rec else None) or got_ct
+    return Response(content=data, media_type=ct, headers={"Cache-Control": "public, max-age=31536000"})
+
+
 # --- Generic collection CRUD (defined last so literal routes take priority) ---
 @api.get("/admin/{collection}")
 async def admin_list(collection: str, user: dict = Depends(require_admin)):
@@ -830,6 +859,11 @@ app.add_middleware(
 async def startup():
     await db.users.create_index("email", unique=True)
     await db.users.create_index("id", unique=True)
+    try:
+        init_storage()
+        logger.info("Object storage initialized")
+    except Exception as e:
+        logger.error(f"Storage init failed: {e}")
     await seed_admin()
     await seed_demo_data()
     await migrate()
@@ -913,6 +947,15 @@ async def migrate():
             tags = set(p.get("tags", [])); tags.add("exclusive")
             await db.products.update_one({"id": p["id"]}, {"$set": {"tags": list(tags)}})
         logger.info("Seeded exclusive_deals section")
+    if not await db.sections.find_one({"type": "full_shop"}):
+        last = await db.sections.find({}).sort("order", -1).to_list(1)
+        order = (last[0].get("order", 20) + 1) if last else 99
+        await db.sections.insert_one({
+            "id": new_id(), "type": "full_shop", "title": "The Full Shop",
+            "visible": True, "order": order,
+            "config": {"subtitle": "Everything in one place"},
+        })
+        logger.info("Seeded full_shop section")
     if updates:
         await db.settings.update_one({"id": "appConfig"}, {"$set": updates})
         logger.info("Migration applied")

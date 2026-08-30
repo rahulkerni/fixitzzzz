@@ -42,10 +42,10 @@ export default function AppLayout() {
       <header className="sticky top-0 z-40 bg-white px-4 pt-3 pb-3 shadow-md border-b border-n200" data-testid="app-header">
         <div className="flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2" data-testid="brand-logo">
-            <div className="w-10 h-10 rounded-xl bg-fx flex items-center justify-center text-white font-display text-xl shadow-md shadow-orange-500/40">F</div>
+            {settings?.logo ? <img src={settings.logo} alt="logo" className="w-10 h-10 rounded-xl object-cover shadow-md" /> : <div className="w-10 h-10 rounded-xl bg-fx flex items-center justify-center text-white font-display text-xl shadow-md shadow-orange-500/40">F</div>}
             <div className="leading-tight">
-              <div className="font-display text-xl text-fx" style={{ textShadow: "0 2px 8px rgba(255,106,0,0.30)" }}>{settings?.appName || "FixitZ"}</div>
-              <div className="text-[10px] font-bold -mt-0.5 flex items-center gap-1 text-fx" style={{ textShadow: "0 1px 3px rgba(255,106,0,0.22)" }}><MapPin className="w-3 h-3" />{settings?.city || "Jammu"} · {settings?.tagline || "30-Min Doorstep Repair"}</div>
+              <div className="font-display text-xl text-fx" style={{ textShadow: "0 2px 8px rgba(238,77,45,0.30)" }}>{settings?.appName || "FixitZ"}</div>
+              <div className="text-[10px] font-bold -mt-0.5 flex items-center gap-1 text-fx" style={{ textShadow: "0 1px 3px rgba(238,77,45,0.22)" }}><MapPin className="w-3 h-3" />{settings?.city || "Jammu"} · {settings?.tagline || "30-Min Doorstep Repair"}</div>
             </div>
           </Link>
           <button onClick={() => nav("/cart")} className="relative p-2.5 bg-fx-light rounded-full ring-1 ring-fx/30 active:scale-90 transition-transform" data-testid="cart-button">

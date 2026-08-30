@@ -363,12 +363,39 @@ function CustomSection({ title, config }) {
   );
 }
 
+function FullShopSection({ title, config }) {
+  const nav = useNavigate();
+  const { add } = useCart();
+  const { data: products = [] } = useQuery({ queryKey: ["fullshop"], queryFn: () => api.get("/products").then((r) => r.data) });
+  if (!products.length) return null;
+  return (
+    <Section title={title} action={<button onClick={() => nav("/shop")} data-testid="fullshop-see-all" className="text-fx text-xs font-bold flex items-center">See all <ChevronRight className="w-4 h-4" /></button>}>
+      <div className="grid grid-cols-2 gap-3">
+        {products.slice(0, 8).map((p) => (
+          <div key={p.id} className="bg-white rounded-2xl overflow-hidden shadow-sm" data-testid={`fullshop-product-${p.id}`}>
+            <img src={p.image} alt={p.name} className="w-full h-32 object-cover" onClick={() => nav(`/product/${p.id}`)} />
+            <div className="p-2.5">
+              <p className="text-xs font-semibold text-n800 line-clamp-2 h-8" onClick={() => nav(`/product/${p.id}`)}>{p.name}</p>
+              <div className="mt-1.5 flex items-center justify-between">
+                <Price price={p.price} mrp={p.mrp} />
+                <button onClick={() => { add(p); toast.success("Added!"); }} className="w-7 h-7 rounded-full bg-fx text-white flex items-center justify-center text-lg font-bold active:scale-90 transition-transform">+</button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <button onClick={() => nav("/shop")} className="w-full mt-3 bg-fx-light text-fx font-bold py-3 rounded-full active:scale-95 transition-transform">View All Products</button>
+    </Section>
+  );
+}
+
 const RENDERERS = {
   banner: BannerSection, category_grid: CategoryGridSection, wallet: WalletSection,
   repair_service: RepairServiceSection, shop_products: ProductsSection, flash_sale: FlashSaleSection,
   free_products: FreeProductsSection, sell_phone: SellSection, buy_phone: BuySection,
   order_tracking: OrderTrackingSection, referral: ReferralSection, video: VideoSection, custom: CustomSection,
   exclusive_deals: ExclusiveDealsSection,
+  full_shop: FullShopSection,
 };
 const FEATURE_MAP = { wallet: "wallet", referral: "referral", flash_sale: "flash", repair_service: "repair", sell_phone: "sell", buy_phone: "buy" };
 

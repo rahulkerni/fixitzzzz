@@ -16,6 +16,7 @@ import bcrypt
 import jwt
 import razorpay
 import asyncio
+import json
 from notifications import notify_order, notify_customer_new_order, notify_admin_new_order
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, UploadFile, File
 from fastapi.responses import Response
@@ -1000,6 +1001,135 @@ async def delete_brand_cascade(bid: str, user: dict = Depends(require_admin)):
     await db.repair_models.delete_many({"brand_id": bid})
     await db.repair_brands.delete_one({"id": bid})
     return {"deleted": True, "models_removed": len(mids)}
+
+
+class AdminAIInput(BaseModel):
+    text: str
+
+
+ADMIN_AI_ACTIONS = """
+Available actions (pick exactly ONE):
+- create_product: params {name, price, mrp?, description?, image?}
+- update_price: params {query, price}   (query matches an existing product name)
+- delete_product: params {query}
+- make_free: params {query}             (sets product price to 0)
+- create_coupon: params {code, type(flat|percent|free_product), value, min_order?}
+- set_theme: params {primaryColor?, accentColor?, pageBg?}   (hex colors)
+- set_header: params {appName?, tagline?, city?}
+- toggle_section: params {type, visible}  (section types: banner, category_grid, flash_sale, exclusive_deals, full_shop, shop_products, wallet, referral)
+- flash_add: params {query, flash_price?}
+- send_email: params {to, subject, body}
+- stats: params {}                       (returns product/order/user counts + revenue)
+- answer: params {}                      (no change, just reply in message)
+"""
+
+
+async def _find_product(query):
+    if not query:
+        return None
+    return await db.products.find_one({"name": {"$regex": query, "$options": "i"}})
+
+
+async def _run_admin_action(action, p):
+    try:
+        if action == "create_product":
+            doc = {"id": new_id(), "name": p.get("name", "New Product"), "price": int(p.get("price") or 0),
+                   "mrp": int(p.get("mrp") or p.get("price") or 0), "description": p.get("description", ""),
+                   "image": p.get("image", ""), "tags": [], "stock": 100, "active": True, "created_at": now_iso()}
+            await db.products.insert_one(doc)
+            return {"created": doc["name"], "id": doc["id"]}
+        if action == "update_price":
+            pr = await _find_product(p.get("query", ""))
+            if not pr:
+                return {"error": "product not found"}
+            await db.products.update_one({"id": pr["id"]}, {"$set": {"price": int(p.get("price") or 0)}})
+            return {"updated": pr["name"], "price": int(p.get("price") or 0)}
+        if action == "make_free":
+            pr = await _find_product(p.get("query", ""))
+            if not pr:
+                return {"error": "product not found"}
+            await db.products.update_one({"id": pr["id"]}, {"$set": {"price": 0, "is_free": True}})
+            return {"free": pr["name"]}
+        if action == "delete_product":
+            pr = await _find_product(p.get("query", ""))
+            if not pr:
+                return {"error": "product not found"}
+            await db.products.delete_one({"id": pr["id"]})
+            return {"deleted": pr["name"]}
+        if action == "create_coupon":
+            doc = {"id": new_id(), "code": (p.get("code", "") or "").upper(), "type": p.get("type", "flat"),
+                   "value": int(p.get("value") or 0), "min_order": int(p.get("min_order") or 0), "active": True, "created_at": now_iso()}
+            await db.coupons.insert_one(doc)
+            return {"coupon": doc["code"]}
+        if action == "set_theme":
+            upd = {k: v for k, v in p.items() if k in ("primaryColor", "accentColor", "pageBg") and v}
+            if upd:
+                await db.settings.update_one({"id": "appConfig"}, {"$set": upd}, upsert=True)
+            return {"theme": upd}
+        if action == "set_header":
+            upd = {k: v for k, v in p.items() if k in ("appName", "tagline", "city") and v}
+            if upd:
+                await db.settings.update_one({"id": "appConfig"}, {"$set": upd}, upsert=True)
+            return {"header": upd}
+        if action == "toggle_section":
+            vis = bool(p.get("visible", True))
+            r = await db.sections.update_many({"type": p.get("type")}, {"$set": {"visible": vis}})
+            return {"section": p.get("type"), "visible": vis, "matched": r.matched_count}
+        if action == "flash_add":
+            pr = await _find_product(p.get("query", ""))
+            if not pr:
+                return {"error": "product not found"}
+            tags = set(pr.get("tags", []))
+            tags.add("flash")
+            upd = {"tags": list(tags)}
+            if p.get("flash_price") is not None:
+                upd["flash_price"] = int(p["flash_price"])
+            await db.products.update_one({"id": pr["id"]}, {"$set": upd})
+            return {"flash_added": pr["name"]}
+        if action == "send_email":
+            from notifications import send_email
+            ok = await asyncio.to_thread(send_email, p.get("to", ""), p.get("subject", "FixitZ"), f"<div style='font-family:Arial'>{p.get('body', '')}</div>")
+            return {"email_sent": ok, "to": p.get("to")}
+        if action == "stats":
+            products = await db.products.count_documents({})
+            orders = await db.orders.count_documents({})
+            users = await db.users.count_documents({})
+            revenue = 0.0
+            async for o in db.orders.find({}):
+                revenue += float(o.get("amount") or 0)
+            return {"products": products, "orders": orders, "users": users, "revenue": round(revenue)}
+    except Exception as e:
+        return {"error": str(e)}
+    return None
+
+
+@api.post("/admin/ai")
+async def admin_ai(inp: AdminAIInput, user: dict = Depends(require_admin)):
+    system = (
+        "You are the FixitZ Admin Assistant for the store owner. Interpret the owner's instruction and pick ONE action. "
+        "Respond with STRICT JSON only (no markdown, no code fences) as: "
+        '{"action":"<action>","params":{...},"message":"<short confirmation for the admin>"}. '
+        "If it's a question or unclear, use action 'answer' with the reply in message. "
+        "Prices are integers in INR. Never invent product IDs; use the product name in 'query'. " + ADMIN_AI_ACTIONS
+    )
+    try:
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        chat = LlmChat(api_key=os.environ["EMERGENT_LLM_KEY"], session_id="admin-" + user["id"], system_message=system).with_model("openai", "gpt-5.4")
+        raw = await chat.send_message(UserMessage(text=inp.text))
+    except Exception as e:
+        logger.error(f"Admin AI error: {e}")
+        return {"message": "AI is unavailable right now. Please try again.", "action": "error", "result": None}
+    txt = (raw or "").strip()
+    try:
+        data = json.loads(txt[txt.find("{"):txt.rfind("}") + 1])
+    except Exception:
+        return {"message": raw, "action": "answer", "result": None}
+    action = data.get("action", "answer")
+    params = data.get("params", {}) or {}
+    message = data.get("message", "Done.")
+    result = await _run_admin_action(action, params)
+    await db.admin_ai_log.insert_one({"id": new_id(), "adminId": user["id"], "text": inp.text, "action": action, "params": params, "created_at": now_iso()})
+    return {"message": message, "action": action, "result": result}
 
 
 # --- Generic collection CRUD (defined last so literal routes take priority) ---

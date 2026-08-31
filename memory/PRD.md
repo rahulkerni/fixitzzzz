@@ -34,6 +34,10 @@ Shopee-style UX (orange/white/black), everything controlled from admin (no hardc
 - ✅ Smart header search routing (AppLayout): repair keywords → /repair, sell/exchange → /sell, refurbished/used → /buy, else /shop. (Fixes "search showed accessories for repair terms".)
 - ✅ Removed intrusive AI chat auto-popup (was hijacking checkout after 10s); chat FAB retained.
 
+## Implemented (2026-08-31 wave 8)
+- ✅ Admin AI Assistant (/admin/ai): natural-language admin chat (Emergent LLM key, openai gpt-5.4, JSON action-planning). Executes real actions via safe whitelist: create/update-price/delete/make-free product, create coupon, set theme, set header (appName/tagline/city), toggle section, flash_add, send email, stats. Backend POST /api/admin/ai + _run_admin_action dispatcher. Verified via curl (stats, create_product, set_header all worked).
+- Scope boundary (told user): the assistant CANNOT edit the app source code or control the Emergent deployment — infeasible/unsafe from inside a running app. It controls store content/data only.
+
 ## Implemented (2026-08-31 wave 7)
 - ✅ Logo/icon loading: header shows 'F' box with logo overlaid (onError removes broken img); category icons render lucide tile with optional image overlay (onError fallback). No broken-image placeholders.
 - ✅ Brand→Model cascade delete: deleting a repair brand removes its models + services (backend DELETE /admin/repair_brands/{id}). CrudManager now invalidates all admin queries so sibling tabs refresh.

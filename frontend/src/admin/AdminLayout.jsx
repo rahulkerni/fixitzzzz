@@ -1,10 +1,11 @@
 import React from "react";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Settings, LayoutList, Package, Wrench, RefreshCw, Smartphone, ShoppingCart, Users, ArrowLeft, Blocks, Image, ToggleRight, MessageCircle, Grid3x3, Ticket, Zap, Wallet, Gift, PackageOpen, Inbox } from "lucide-react";
+import { LayoutDashboard, Settings, LayoutList, Package, Wrench, RefreshCw, Smartphone, ShoppingCart, Users, ArrowLeft, Blocks, Image, ToggleRight, MessageCircle, Grid3x3, Ticket, Zap, Wallet, Gift, PackageOpen, Inbox, Bot } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
 const LINKS = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, end: true },
+  { to: "/admin/ai", label: "AI Assistant", icon: Bot },
   { to: "/admin/builder", label: "Homepage Builder", icon: Blocks },
   { to: "/admin/categories", label: "Category Icons", icon: Grid3x3 },
   { to: "/admin/banners", label: "Banner Manager", icon: Image },

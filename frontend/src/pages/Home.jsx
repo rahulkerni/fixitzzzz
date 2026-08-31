@@ -60,13 +60,10 @@ function CategoryGridSection({ title, config }) {
           return (
             <motion.button key={idx} whileTap={{ scale: 0.9 }} onClick={() => nav(it.link)} data-testid={`cat-grid-${it.label}`}
               className="flex flex-col items-center gap-2">
-              {it.image ? (
-                <img src={it.image} alt={it.label} className="w-16 h-16 rounded-2xl object-cover shadow-sm" />
-              ) : (
-                <div className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-sm" style={{ background: it.color || "#FFF1E8" }}>
-                  <Icon className="w-7 h-7 text-n900" strokeWidth={2.1} />
-                </div>
-              )}
+              <div className="w-16 h-16 rounded-2xl relative flex items-center justify-center shadow-sm overflow-hidden" style={{ background: it.color || "#FFF1E8" }}>
+                <Icon className="w-7 h-7 text-n900" strokeWidth={2.1} />
+                {it.image && <img src={it.image} alt={it.label} onError={(e) => e.target.remove()} className="absolute inset-0 w-16 h-16 object-cover" />}
+              </div>
               <span className="text-[11px] font-semibold text-n800 text-center leading-tight">{it.label}</span>
             </motion.button>
           );

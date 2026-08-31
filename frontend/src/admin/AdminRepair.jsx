@@ -29,7 +29,7 @@ export default function AdminRepair() {
           columns={[{ key: "image", label: "" }, { key: "name", label: "Name" }, { key: "order", label: "Order" }, { key: "active", label: "Active" }]}
           fields={[
             { key: "name", label: "Brand Name", type: "text" },
-            { key: "image", label: "Logo URL", type: "text" },
+            { key: "image", label: "Brand Logo", type: "image" },
             { key: "order", label: "Order", type: "number" },
             { key: "active", label: "Active", type: "boolean" },
           ]} />
@@ -40,7 +40,7 @@ export default function AdminRepair() {
           fields={[
             { key: "brand_id", label: "Brand", type: "select", options: brandOpts },
             { key: "name", label: "Model Name", type: "text" },
-            { key: "image", label: "Image URL", type: "text" },
+            { key: "image", label: "Model Image", type: "image" },
             { key: "active", label: "Active", type: "boolean" },
           ]} />
       )}

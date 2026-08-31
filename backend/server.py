@@ -991,6 +991,17 @@ async def admin_update_price_request(rid: str, payload: GenericDoc, user: dict =
     return clean(doc)
 
 
+@api.delete("/admin/repair_brands/{bid}")
+async def delete_brand_cascade(bid: str, user: dict = Depends(require_admin)):
+    models = await db.repair_models.find({"brand_id": bid}).to_list(2000)
+    mids = [m["id"] for m in models]
+    if mids:
+        await db.repair_services.delete_many({"model_id": {"$in": mids}})
+    await db.repair_models.delete_many({"brand_id": bid})
+    await db.repair_brands.delete_one({"id": bid})
+    return {"deleted": True, "models_removed": len(mids)}
+
+
 # --- Generic collection CRUD (defined last so literal routes take priority) ---
 @api.get("/admin/{collection}")
 async def admin_list(collection: str, user: dict = Depends(require_admin)):

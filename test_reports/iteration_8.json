@@ -1,0 +1,28 @@
+{
+  "summary": "Frontend-only re-test of 5 bug fixes on FixitZ (mobile 430x900). Splash logo/title visible above speed-lines (z-10 verified via elementFromPoint). Header brand shows F fallback box. Home category icons: all 8 images loaded with naturalWidth>0 (no broken placeholders). Admin /admin/repair Brands & Models tabs: image field is ImageUpload widget (data-testid image-upload/image-upload-input/image-upload-btn) — NOT a URL text input — upload of a small PNG produced a preview thumbnail and saved successfully. Cascade delete (backend): DELETE /admin/repair_brands/{id} removed the temp brand AND the linked model (verified via API — orphan model 'cb0b8225...' NOT in backend after cascade). Customer /repair no longer showed QATempBrand. One minor UX issue: admin Models tab still shows the stale (cached) child model row after cascade-deleting its parent brand because React Query only invalidates the current collection ('repair_brands'); a page refresh / tab re-fetch clears it — the data is correct on the server.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Cascade delete brand -> models (admin UI cache)", "issue": "After deleting a brand from Brands tab, the Models tab still shows the child models until a manual refresh. Backend correctly cascades (verified via /admin/repair_models GET). CrudManager.del.onSuccess only invalidates queryKey=['admin', collection] (repair_brands); should also invalidate ['admin','repair_models'] and ['admin','repair_services'] when a repair_brand is deleted (or invalidate all admin queries).", "affected_selectors": ["del-<brandId>", "repair-tab-models"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "In /app/frontend/src/admin/CrudManager.jsx del.onSuccess, also invalidate related admin queries when collection==='repair_brands' (repair_models, repair_services). Alternatively, use qc.invalidateQueries({queryKey:['admin']}) to refresh all admin lists."
+  ],
+  "critical_code_review_comments": [
+    "CrudManager cascade invalidation is collection-scoped only; when a backend endpoint cascades across collections, the admin UI shows stale rows until a manual refresh.",
+    "ImageUpload uses BACKEND prefix from process.env at module scope (fine), but the produced URL is absolute — good for CDN moves but ensure DB stores relative path if backend URL changes across envs.",
+    "Splash uses sessionStorage 'fx_splash' — good for single-session UX; testing requires manual sessionStorage.clear() to re-verify."
+  ],
+  "updated_files": [],
+  "success_rate": { "backend": "n/a (skipped)", "frontend": "95%" },
+  "test_credentials": "admin shamthemanu@gmail.com / Fixitz@2026 — worked",
+  "seed_data_creation": "Created temp brand 'QATempBrand' + temp model 'QATempModel'; both were removed by cascade delete (verified in backend).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All 5 reported bugs are fixed and verified end-to-end. Only nit: CrudManager cache invalidation on cascade delete leaves stale rows in sibling admin tab until refresh. Splash requires sessionStorage.clear() to re-test.",
+  "rca of the issue": "Stale Models tab: React Query cache for ['admin','repair_models'] is not invalidated when a repair_brand is deleted. Backend cascade in DELETE /admin/repair_brands/{bid} works correctly (models_removed>=1). Fix: extend CrudManager.del.onSuccess to invalidate cross-collection queries when collection is a parent (repair_brands => also invalidate repair_models, repair_services)."
+}

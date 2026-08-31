@@ -47,7 +47,7 @@ export default function Splash() {
       {Array.from({ length: 14 }).map((_, i) => (
         <span key={i} className="absolute h-[3px] rounded-full" style={{ top: `${8 + i * 6}%`, left: 0, right: 0, background: "linear-gradient(90deg,transparent,#EE4D2D,transparent)", animation: `fx-speed ${0.7 + (i % 5) * 0.12}s ${i * 0.05}s ease-in` }} />
       ))}
-      <div className="relative text-center" style={{ animation: "fx-pop .55s ease-out both" }}>
+      <div className="relative z-10 text-center" style={{ animation: "fx-pop .55s ease-out both" }}>
         <div className="w-24 h-24 mx-auto rounded-3xl bg-fx flex items-center justify-center text-white font-display text-5xl shadow-2xl shadow-orange-600/50">F</div>
         <h1 className="font-display text-4xl text-white mt-4 tracking-tight">FixitZ</h1>
         <p className="text-fx text-sm font-semibold mt-1">30-Min Doorstep Repair · Jammu</p>

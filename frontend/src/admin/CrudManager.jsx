@@ -29,7 +29,7 @@ export default function CrudManager({ collection, title, fields, columns, defaul
 
   const del = useMutation({
     mutationFn: (id) => api.delete(`/admin/${collection}/${id}`),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin", collection] }); toast.success("Deleted"); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin"] }); qc.invalidateQueries({ queryKey: ["sections"] }); toast.success("Deleted"); },
   });
 
   const openNew = () => { setEditing(null); setForm({ ...defaults }); setOpen(true); };

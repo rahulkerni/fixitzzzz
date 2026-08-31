@@ -34,6 +34,16 @@ Shopee-style UX (orange/white/black), everything controlled from admin (no hardc
 - ✅ Smart header search routing (AppLayout): repair keywords → /repair, sell/exchange → /sell, refurbished/used → /buy, else /shop. (Fixes "search showed accessories for repair terms".)
 - ✅ Removed intrusive AI chat auto-popup (was hijacking checkout after 10s); chat FAB retained.
 
+## Implemented (2026-08-31 wave 7)
+- ✅ Logo/icon loading: header shows 'F' box with logo overlaid (onError removes broken img); category icons render lucide tile with optional image overlay (onError fallback). No broken-image placeholders.
+- ✅ Brand→Model cascade delete: deleting a repair brand removes its models + services (backend DELETE /admin/repair_brands/{id}). CrudManager now invalidates all admin queries so sibling tabs refresh.
+- ✅ Repair brand & model images = direct upload (ImageUpload), not URL.
+- ✅ Splash logo now above animation lines (z-10) — no longer hidden.
+- Verified: testing agent 5/5 + backend curl.
+
+## Deferred / needs scoping
+- Admin AI assistant with "full code + project control, even edit website/send mail": an in-app bot cannot safely edit the codebase or control the deployment. Proposed scoped version: an admin chat that uses the LLM to perform ALLOWED actions via existing admin APIs (create/edit products, toggle sections, draft/send emails, answer analytics) — confirm scope.
+
 ## Implemented (2026-08-30 wave 6)
 - ✅ Price Request system: customers who can't find their model tap "Request a price" (Sell & Repair) or get an auto-popup after 12s of no selection on Repair. Sends model + phone (+ fault for repair, marked URGENT) to admin via email/SMS. Backend POST /api/price-request, admin GET/PUT /api/admin/price-requests.
 - ✅ Price Request Inbox admin page (/admin/price-requests): see requests, send a quote (auto-texts customer) or close.

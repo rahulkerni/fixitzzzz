@@ -24,7 +24,7 @@ export default function Repair() {
   const [req, setReq] = useState(null);
 
   const { data: brands = [] } = useQuery({ queryKey: ["rbrands"], queryFn: () => api.get("/repair/brands").then((r) => r.data) });
-  const { data: models = [] } = useQuery({ queryKey: ["rmodels", brand?.id], queryFn: () => api.get("/repair/models", { params: { brand_id: brand.id } }).then((r) => r.data), enabled: !!brand });
+  const { data: models = [], isFetched: modelsFetched } = useQuery({ queryKey: ["rmodels", brand?.id], queryFn: () => api.get("/repair/models", { params: { brand_id: brand.id } }).then((r) => r.data), enabled: !!brand });
   const { data: services = [] } = useQuery({ queryKey: ["rservices", model?.id], queryFn: () => api.get("/repair/services", { params: { model_id: model.id } }).then((r) => r.data), enabled: !!model });
 
   useEffect(() => { if (model) { const start = Date.now(); return () => track({ type: "model_view", model: model.name, seconds: Math.round((Date.now() - start) / 1000) }); } }, [model]);
@@ -36,6 +36,11 @@ export default function Repair() {
       return () => clearTimeout(t);
     }
   }, [step]);
+
+  // If the picked brand has no models, auto-open the request-a-price form
+  useEffect(() => {
+    if (step === 1 && modelsFetched && models.length === 0) setReq((r) => r || { urgent: false });
+  }, [step, modelsFetched, models.length]);
 
   const back = () => { if (step === 0) nav(-1); else setStep(step - 1); };
 

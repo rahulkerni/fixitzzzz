@@ -34,6 +34,11 @@ Shopee-style UX (orange/white/black), everything controlled from admin (no hardc
 - ✅ Smart header search routing (AppLayout): repair keywords → /repair, sell/exchange → /sell, refurbished/used → /buy, else /shop. (Fixes "search showed accessories for repair terms".)
 - ✅ Removed intrusive AI chat auto-popup (was hijacking checkout after 10s); chat FAB retained.
 
+## Implemented (2026-09-01 wave 10)
+- ✅ Wiped demo data: emptied products, repair_models, repair_services, sell_devices (kept 11 repair_brands + 6 issues). Persists across restarts (seed_demo_data guarded by existing appConfig settings doc).
+- ✅ Repair Brand→Model: if the selected brand has no models (modelsFetched && length 0), auto-opens RequestPriceModal → files a price request into Admin → Price Requests.
+- ✅ Header logo/tagline de-shadowed + higher contrast (tagline now text-n700, no textShadow, logo no orange glow).
+
 ## Implemented (2026-09-01 wave 9)
 - ✅ Deploy "failed to start" fix: startup() is now crash-resilient — index creation, storage init, seed_admin, seed_demo_data, and migrate each run in guarded try/except so any single failure logs and the app still boots. Verified backend boots (200, "Application startup complete").
 - ✅ Splash redesigned with premium AI feel: glowing gradient logo tile with shimmer, 3 orbiting particle rings, gradient shimmering "FixitZ" title, dotted grid, dark radial bg, "Powered by AI · tap to enter". Logo z-10 (never hidden). Sound fires on first tap/touch (true zero-touch autoplay is browser-blocked). New keyframes in index.css (fx-spin/logoglow/shimmer/textshine/blink).

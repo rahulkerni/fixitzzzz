@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth, apiErr } from "@/context/AuthContext";
+import { GoogleButton } from "@/components/GoogleButton";
 import { toast } from "sonner";
 
 export default function Register() {
@@ -37,6 +38,12 @@ export default function Register() {
           <input value={form.referral_code} onChange={set("referral_code")} placeholder="Referral code (optional)" data-testid="reg-referral" className="w-full bg-white rounded-2xl p-4 text-sm outline-none focus:ring-2 ring-fx shadow-sm uppercase" />
           <button disabled={busy} type="submit" data-testid="reg-submit" className="w-full bg-fx text-white font-bold py-4 rounded-full active:scale-95 transition-transform disabled:opacity-50">{busy ? "Creating…" : "Sign Up"}</button>
         </form>
+        <div className="flex items-center gap-3 my-6">
+          <div className="h-px flex-1 bg-n200" />
+          <span className="text-xs text-n400">or</span>
+          <div className="h-px flex-1 bg-n200" />
+        </div>
+        <GoogleButton label="Sign up with Google" />
         <p className="text-center text-sm text-n500 mt-6">Have an account? <Link to="/login" className="text-fx font-bold" data-testid="go-login">Login</Link></p>
       </motion.div>
     </div>

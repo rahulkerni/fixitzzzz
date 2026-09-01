@@ -14,6 +14,9 @@ from typing import List, Optional, Dict, Any
 
 import bcrypt
 import jwt
+import httpx
+import firebase_admin
+from firebase_admin import auth as fb_auth, credentials as fb_credentials
 import razorpay
 import asyncio
 import json
@@ -37,6 +40,15 @@ JWT_SECRET = os.environ['JWT_SECRET']
 JWT_ALGORITHM = "HS256"
 
 rzp_client = razorpay.Client(auth=(os.environ['RAZORPAY_KEY_ID'], os.environ['RAZORPAY_KEY_SECRET']))
+
+
+def _init_firebase():
+    if not firebase_admin._apps:
+        sa = json.loads(os.environ["FIREBASE_SERVICE_ACCOUNT_JSON"])
+        firebase_admin.initialize_app(fb_credentials.Certificate(sa))
+
+
+_init_firebase()
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("fixitz")
@@ -85,21 +97,58 @@ def create_token(user_id: str, email: str, role: str) -> str:
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 
-async def get_current_user(creds: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> dict:
-    if not creds:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    try:
-        payload = jwt.decode(creds.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token expired")
-    except jwt.InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    user = await db.users.find_one({"id": payload["sub"]})
-    if not user:
-        raise HTTPException(status_code=401, detail="User not found")
-    user = clean(user)
-    user.pop("password_hash", None)
-    return user
+# Emergent-managed Google OAuth session endpoint
+EMERGENT_SESSION_URL = "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data"
+
+
+def _new_session_token() -> str:
+    return "fx_" + uuid.uuid4().hex + uuid.uuid4().hex
+
+
+def _extract_bearer(request: Request) -> Optional[str]:
+    auth = request.headers.get("Authorization") or ""
+    if auth.startswith("Bearer "):
+        return auth.split(" ", 1)[1].strip()
+    return None
+
+
+async def _resolve_session_user(token: str) -> Optional[dict]:
+    sess = await db.user_sessions.find_one({"session_token": token})
+    if not sess:
+        return None
+    expires_at = sess.get("expires_at")
+    if isinstance(expires_at, str):
+        expires_at = datetime.fromisoformat(expires_at)
+    if expires_at and expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at and expires_at < datetime.now(timezone.utc):
+        return None
+    return await db.users.find_one({"id": sess["user_id"]})
+
+
+async def get_current_user(request: Request) -> dict:
+    cookie_token = request.cookies.get("session_token")
+    bearer = _extract_bearer(request)
+    # 1) Google OAuth session token — cookie first, then bearer header
+    for candidate in (cookie_token, bearer):
+        if candidate:
+            user = await _resolve_session_user(candidate)
+            if user:
+                user = clean(user); user.pop("password_hash", None)
+                return user
+    # 2) JWT (email/password login)
+    if bearer:
+        try:
+            payload = jwt.decode(bearer, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+            user = await db.users.find_one({"id": payload["sub"]})
+            if user:
+                user = clean(user); user.pop("password_hash", None)
+                return user
+        except jwt.ExpiredSignatureError:
+            raise HTTPException(status_code=401, detail="Token expired")
+        except jwt.InvalidTokenError:
+            pass
+    raise HTTPException(status_code=401, detail="Not authenticated")
 
 
 async def require_admin(user: dict = Depends(get_current_user)) -> dict:
@@ -317,6 +366,75 @@ async def login(inp: LoginInput):
 @api.get("/auth/me")
 async def me(user: dict = Depends(get_current_user)):
     return user
+
+
+class FirebaseTokenInput(BaseModel):
+    id_token: str
+
+
+@api.post("/auth/firebase")
+async def firebase_login(inp: FirebaseTokenInput, response: Response):
+    try:
+        decoded = fb_auth.verify_id_token(inp.id_token)
+    except Exception as e:
+        logger.error(f"Firebase token verify failed: {e}")
+        raise HTTPException(status_code=401, detail="Invalid Google sign-in token")
+    email = (decoded.get("email") or "").lower()
+    if not email:
+        raise HTTPException(status_code=401, detail="Google account has no email")
+    name = decoded.get("name") or email.split("@")[0]
+    picture = decoded.get("picture")
+    user = await db.users.find_one({"email": email})
+    if not user:
+        user = {
+            "id": new_id(), "name": name, "email": email, "phone": "",
+            "role": "user", "wallet": 0,
+            "referralCode": (name[:3].upper() if name else "FX") + new_id()[:5].upper(),
+            "picture": picture, "authProvider": "google", "created_at": now_iso(),
+        }
+        await db.users.insert_one(user)
+    else:
+        upd = {"authProvider": user.get("authProvider") or "google"}
+        if picture and not user.get("picture"):
+            upd["picture"] = picture
+        await db.users.update_one({"id": user["id"]}, {"$set": upd})
+        user.update(upd)
+    session_token = _new_session_token()
+    expires = datetime.now(timezone.utc) + timedelta(days=7)
+    await db.user_sessions.insert_one({
+        "id": new_id(), "user_id": user["id"], "session_token": session_token,
+        "expires_at": expires, "created_at": datetime.now(timezone.utc),
+    })
+    response.set_cookie(key="session_token", value=session_token, httponly=True,
+                        secure=True, samesite="none", path="/", max_age=7 * 24 * 60 * 60)
+    safe = clean(dict(user)); safe.pop("password_hash", None)
+    return {"token": session_token, "user": safe}
+
+
+@api.post("/auth/logout")
+async def logout_session(request: Request, response: Response):
+    cookie_token = request.cookies.get("session_token")
+    bearer = _extract_bearer(request)
+    for t in (cookie_token, bearer):
+        if t:
+            await db.user_sessions.delete_one({"session_token": t})
+    response.delete_cookie("session_token", path="/")
+    return {"ok": True}
+
+
+class PhoneInput(BaseModel):
+    phone: str
+
+
+@api.post("/auth/complete-profile")
+async def complete_profile(inp: PhoneInput, user: dict = Depends(get_current_user)):
+    phone = (inp.phone or "").strip()
+    if not phone.isdigit() or len(phone) != 10:
+        raise HTTPException(status_code=400, detail="Enter a valid 10-digit mobile number")
+    await db.users.update_one({"id": user["id"]}, {"$set": {"phone": phone}})
+    updated = await db.users.find_one({"id": user["id"]})
+    updated = clean(updated); updated.pop("password_hash", None)
+    return updated
 
 
 # ---------------------------------------------------------------------------

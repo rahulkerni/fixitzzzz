@@ -130,7 +130,7 @@ Shopee-style UX (orange/white/black), everything controlled from admin (no hardc
 - P1: Wallet add-money via Razorpay + cashback rules engine.
 - P1: Phone OTP login (Twilio) — currently email+password only.
 - P2: SMS/Email notifications on order events (Resend/Twilio).
-- P2: Emergent-managed Google login.
+- ✅ Google login — implemented via **Firebase Auth** (signInWithPopup), maps to users by email, co-exists with JWT. Google users prompted for phone via /complete-profile. (2026-09-01)
 - P2: Coupon admin CRUD UI (endpoint exists), section drag-reorder UI.
 - P2: Self-host brand logos to avoid external DNS blips.
 

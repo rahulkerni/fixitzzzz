@@ -15,6 +15,7 @@ import Orders from "@/pages/Orders";
 import Account from "@/pages/Account";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
+import CompleteProfile from "@/pages/CompleteProfile";
 import AdminLayout from "@/admin/AdminLayout";
 import AdminDashboard from "@/admin/AdminDashboard";
 import AdminHomepageBuilder from "@/admin/AdminHomepageBuilder";
@@ -54,6 +55,13 @@ export default function App() {
     <BrowserRouter>
       <ThemeInjector />
       <Splash />
+      <AppRoutes />
+    </BrowserRouter>
+  );
+}
+
+function AppRoutes() {
+  return (
       <Routes>
         <Route element={<AppLayout />}>
           <Route path="/" element={<Home />} />
@@ -71,6 +79,7 @@ export default function App() {
         </Route>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/complete-profile" element={<Protected><CompleteProfile /></Protected>} />
         <Route path="/admin" element={<Protected admin><AdminLayout /></Protected>}>
           <Route index element={<AdminDashboard />} />
           <Route path="builder" element={<AdminHomepageBuilder />} />
@@ -95,6 +104,5 @@ export default function App() {
           <Route path="chat" element={<AdminChat />} />
         </Route>
       </Routes>
-    </BrowserRouter>
   );
 }

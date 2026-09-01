@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth, apiErr } from "@/context/AuthContext";
+import { GoogleButton } from "@/components/GoogleButton";
 import { toast } from "sonner";
 
 export default function Login() {
@@ -33,6 +34,12 @@ export default function Login() {
           <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" required placeholder="Password" data-testid="login-password" className="w-full bg-white rounded-2xl p-4 text-sm outline-none focus:ring-2 ring-fx shadow-sm" />
           <button disabled={busy} type="submit" data-testid="login-submit" className="w-full bg-fx text-white font-bold py-4 rounded-full active:scale-95 transition-transform disabled:opacity-50">{busy ? "Logging in…" : "Login"}</button>
         </form>
+        <div className="flex items-center gap-3 my-6">
+          <div className="h-px flex-1 bg-n200" />
+          <span className="text-xs text-n400">or</span>
+          <div className="h-px flex-1 bg-n200" />
+        </div>
+        <GoogleButton />
         <p className="text-center text-sm text-n500 mt-6">New here? <Link to="/register" className="text-fx font-bold" data-testid="go-register">Create account</Link></p>
       </motion.div>
     </div>

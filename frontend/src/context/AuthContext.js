@@ -30,13 +30,28 @@ export function AuthProvider({ children }) {
     return data.user;
   };
 
-  const logout = () => {
+  // Exchange a Firebase Google ID token for a session token + user.
+  const loginFirebase = async (idToken) => {
+    const { data } = await api.post("/auth/firebase", { id_token: idToken });
+    localStorage.setItem("fixitz_token", data.token);
+    setUser(data.user);
+    return data.user;
+  };
+
+  const completeProfile = async (phone) => {
+    const { data } = await api.post("/auth/complete-profile", { phone });
+    setUser(data);
+    return data;
+  };
+
+  const logout = async () => {
+    try { await api.post("/auth/logout"); } catch (e) { /* ignore */ }
     localStorage.removeItem("fixitz_token");
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, setUser, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, setUser, loading, login, register, loginFirebase, completeProfile, logout }}>
       {children}
     </AuthContext.Provider>
   );

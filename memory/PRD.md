@@ -34,6 +34,11 @@ Shopee-style UX (orange/white/black), everything controlled from admin (no hardc
 - ✅ Smart header search routing (AppLayout): repair keywords → /repair, sell/exchange → /sell, refurbished/used → /buy, else /shop. (Fixes "search showed accessories for repair terms".)
 - ✅ Removed intrusive AI chat auto-popup (was hijacking checkout after 10s); chat FAB retained.
 
+## Implemented (2026-09-01 wave 11)
+- ✅ Bulk Blaster SMS wired correctly: POST JSON {apiKey, phone, message} to https://bulkblaster-global-sms-...run.app/send-international-sms. Verified payload accepted (only blocked by low account balance: 355 coins, needs ~10000/SMS → USER MUST TOP UP).
+- ✅ New-order flow: admin SMS to ADMIN_SMS_NUMBERS (9596966026, 8082384280) — short "New order #ID Rs.X, payment pending" + admin email. Customer SMS ONLY when payment is done (payment.status in success/paid/wallet/mock). notify_order_created in notifications.py.
+- ✅ Admin Orders list refreshes every 7s.
+
 ## Implemented (2026-09-01 wave 10)
 - ✅ Wiped demo data: emptied products, repair_models, repair_services, sell_devices (kept 11 repair_brands + 6 issues). Persists across restarts (seed_demo_data guarded by existing appConfig settings doc).
 - ✅ Repair Brand→Model: if the selected brand has no models (modelsFetched && length 0), auto-opens RequestPriceModal → files a price request into Admin → Price Requests.

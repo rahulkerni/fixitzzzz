@@ -55,32 +55,39 @@ def send_sms(phone: str, text: str) -> bool:
     """
     base = os.environ.get("BULKBLASTER_API_URL", "").strip()
     api_key = os.environ.get("BULKBLASTER_API_KEY", "").strip()
-    sender = os.environ.get("BULKBLASTER_SENDER_ID", "").strip()
     if not base or not api_key or not phone:
         logger.info("SMS skipped (missing url/key/phone)")
         return False
     num = "".join(ch for ch in str(phone) if ch.isdigit())
     if len(num) == 10:
         num = "91" + num
-    params = {
-        "apikey": api_key,
-        "senderid": sender,
-        "number": num,
-        "message": text,
-        "route": os.environ.get("BULKBLASTER_ROUTE", "transactional"),
-    }
-    tid = os.environ.get("BULKBLASTER_TEMPLATE_ID", "").strip()
-    if tid:
-        params["templateid"] = tid
     try:
-        url = base + ("&" if "?" in base else "?") + urllib.parse.urlencode(params)
-        with urllib.request.urlopen(url, timeout=10) as r:
-            body = r.read().decode("utf-8", "ignore")
-            logger.info("BulkBlaster response: %s", body[:200])
-            return r.status == 200
+        import requests
+        r = requests.post(base, json={"apiKey": api_key, "phone": num, "message": text}, timeout=15)
+        ok = r.status_code == 200 and "error" not in r.text.lower()
+        if not ok:
+            logger.warning("BulkBlaster: %s", r.text[:200])
+        return ok
     except Exception as e:
         logger.error("BulkBlaster send failed: %s", e)
         return False
+
+
+def notify_order_created(order: dict, admin_numbers, admin_email: str = ""):
+    """On a new order: short SMS to admin(s) always; customer SMS only if payment is done."""
+    short_id = str(order.get("id", ""))[:8].upper()
+    name = order.get("userName") or "Customer"
+    phone = order.get("userPhone") or "-"
+    amount = order.get("amount", 0)
+    admin_msg = f"FixitZ: New order #{short_id} Rs.{amount} from {name} {phone}. Payment pending. Check dashboard."
+    for n in (admin_numbers or []):
+        if n:
+            send_sms(n, admin_msg)
+    if admin_email:
+        send_email(admin_email, f"New Order #{short_id}", f"<div style='font-family:Arial'><p>New order from {name}, {phone}. Amount Rs.{amount}. Check dashboard.</p></div>")
+    pay = str((order.get("payment") or {}).get("status", "")).lower()
+    if pay in {"success", "paid", "captured", "completed", "done", "wallet", "mock"} and order.get("userPhone"):
+        send_sms(order["userPhone"], f"FixitZ: Order #{short_id} confirmed, payment received (Rs.{amount}). We'll contact you soon.")
 
 
 def _order_label(order: dict) -> str:

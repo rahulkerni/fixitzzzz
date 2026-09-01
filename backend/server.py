@@ -17,7 +17,7 @@ import jwt
 import razorpay
 import asyncio
 import json
-from notifications import notify_order, notify_customer_new_order, notify_admin_new_order
+from notifications import notify_order, notify_customer_new_order, notify_admin_new_order, notify_order_created
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, UploadFile, File
 from fastapi.responses import Response
 from storage import init_storage, put_object, get_object
@@ -499,10 +499,9 @@ async def create_order(inp: OrderInput, user: dict = Depends(get_current_user)):
     await db.orders.insert_one(order)
     settings = await db.settings.find_one({"id": "appConfig"}) or {}
     admin_email = settings.get("adminAlertEmail") or os.environ.get("ADMIN_EMAIL", "")
-    admin_phone = settings.get("adminAlertPhone") or settings.get("supportPhone") or ""
+    admin_numbers = [n.strip() for n in os.environ.get("ADMIN_SMS_NUMBERS", "").split(",") if n.strip()]
     snapshot = clean(dict(order))
-    asyncio.create_task(asyncio.to_thread(notify_customer_new_order, snapshot))
-    asyncio.create_task(asyncio.to_thread(notify_admin_new_order, snapshot, admin_email, admin_phone))
+    asyncio.create_task(asyncio.to_thread(notify_order_created, snapshot, admin_numbers, admin_email))
     return clean(order)
 
 

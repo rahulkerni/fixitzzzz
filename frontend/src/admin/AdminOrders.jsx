@@ -12,7 +12,7 @@ export default function AdminOrders() {
   const qc = useQueryClient();
   const [soundOn, setSoundOn] = useState(() => localStorage.getItem("fx_admin_sound") !== "0");
   const seen = useRef(null);
-  const { data: orders = [] } = useQuery({ queryKey: ["admin-orders"], queryFn: () => api.get("/admin/orders").then((r) => r.data), refetchInterval: 8000 });
+  const { data: orders = [] } = useQuery({ queryKey: ["admin-orders"], queryFn: () => api.get("/admin/orders").then((r) => r.data), refetchInterval: 7000 });
 
   useEffect(() => {
     const ids = new Set(orders.map((o) => o.id));

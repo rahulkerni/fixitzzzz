@@ -1018,6 +1018,8 @@ Available actions (pick exactly ONE):
 - set_header: params {appName?, tagline?, city?}
 - toggle_section: params {type, visible}  (section types: banner, category_grid, flash_sale, exclusive_deals, full_shop, shop_products, wallet, referral)
 - flash_add: params {query, flash_price?}
+- bulk_create_products: params {products:[{name, price, mrp?, description?, image?}, ...]}   (create MANY products at once)
+- flash_category: params {category, discount_percent?, flash_price?}   (put an entire category on flash sale in one go)
 - send_email: params {to, subject, body}
 - stats: params {}                       (returns product/order/user counts + revenue)
 - answer: params {}                      (no change, just reply in message)
@@ -1090,6 +1092,35 @@ async def _run_admin_action(action, p):
             from notifications import send_email
             ok = await asyncio.to_thread(send_email, p.get("to", ""), p.get("subject", "FixitZ"), f"<div style='font-family:Arial'>{p.get('body', '')}</div>")
             return {"email_sent": ok, "to": p.get("to")}
+        if action == "bulk_create_products":
+            items = p.get("products") or []
+            names = []
+            for it in items:
+                doc = {"id": new_id(), "name": it.get("name", "Product"), "price": int(it.get("price") or 0),
+                       "mrp": int(it.get("mrp") or it.get("price") or 0), "description": it.get("description", ""),
+                       "image": it.get("image", ""), "tags": [], "stock": 100, "active": True, "created_at": now_iso()}
+                await db.products.insert_one(doc)
+                names.append(doc["name"])
+            return {"created": names, "count": len(names)}
+        if action == "flash_category":
+            cat = (p.get("category") or "").strip()
+            pct = p.get("discount_percent")
+            fp = p.get("flash_price")
+            cat_ids = [c["id"] for c in await db.categories.find({"name": {"$regex": cat, "$options": "i"}}).to_list(20)]
+            q = {"$or": [{"category_id": {"$in": cat_ids or ["__none__"]}}, {"tags": {"$regex": cat, "$options": "i"}}, {"name": {"$regex": cat, "$options": "i"}}]}
+            prods = await db.products.find(q).to_list(2000)
+            n = 0
+            for pr in prods:
+                tags = set(pr.get("tags", []))
+                tags.add("flash")
+                upd = {"tags": list(tags)}
+                if fp is not None:
+                    upd["flash_price"] = int(fp)
+                elif pct is not None:
+                    upd["flash_price"] = max(0, round(float(pr.get("price", 0)) * (1 - float(pct) / 100)))
+                await db.products.update_one({"id": pr["id"]}, {"$set": upd})
+                n += 1
+            return {"flash_category": cat, "products_updated": n}
         if action == "stats":
             products = await db.products.count_documents({})
             orders = await db.orders.count_documents({})
@@ -1183,16 +1214,21 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup():
-    await db.users.create_index("email", unique=True)
-    await db.users.create_index("id", unique=True)
+    try:
+        await db.users.create_index("id", unique=True)
+        await db.users.create_index("email", unique=True)
+    except Exception as e:
+        logger.error(f"Index creation skipped: {e}")
     try:
         init_storage()
         logger.info("Object storage initialized")
     except Exception as e:
         logger.error(f"Storage init failed: {e}")
-    await seed_admin()
-    await seed_demo_data()
-    await migrate()
+    for step in ("seed_admin", "seed_demo_data", "migrate"):
+        try:
+            await globals()[step]()
+        except Exception as e:
+            logger.error(f"Startup step {step} failed (continuing): {e}")
 
 
 async def seed_admin():

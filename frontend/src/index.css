@@ -122,3 +122,10 @@ body {
 @layer base {
   * { @apply border-border; }
 }
+
+/* Splash AI-feel animations */
+@keyframes fx-spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+@keyframes fx-logoglow { 0%,100% { opacity: .35; } 50% { opacity: .8; } }
+@keyframes fx-shimmer { 0% { transform: translateX(-120%); } 60%,100% { transform: translateX(120%); } }
+@keyframes fx-textshine { to { background-position: 200% center; } }
+@keyframes fx-blink { 0%,100% { opacity: .3; } 50% { opacity: 1; } }

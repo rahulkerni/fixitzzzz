@@ -34,6 +34,12 @@ Shopee-style UX (orange/white/black), everything controlled from admin (no hardc
 - ✅ Smart header search routing (AppLayout): repair keywords → /repair, sell/exchange → /sell, refurbished/used → /buy, else /shop. (Fixes "search showed accessories for repair terms".)
 - ✅ Removed intrusive AI chat auto-popup (was hijacking checkout after 10s); chat FAB retained.
 
+## Implemented (2026-09-01 wave 9)
+- ✅ Deploy "failed to start" fix: startup() is now crash-resilient — index creation, storage init, seed_admin, seed_demo_data, and migrate each run in guarded try/except so any single failure logs and the app still boots. Verified backend boots (200, "Application startup complete").
+- ✅ Splash redesigned with premium AI feel: glowing gradient logo tile with shimmer, 3 orbiting particle rings, gradient shimmering "FixitZ" title, dotted grid, dark radial bg, "Powered by AI · tap to enter". Logo z-10 (never hidden). Sound fires on first tap/touch (true zero-touch autoplay is browser-blocked). New keyframes in index.css (fx-spin/logoglow/shimmer/textshine/blink).
+- ✅ AI Bulk Actions: assistant supports bulk_create_products and flash_category (whole category on flash). Verified (testing agent 4/4 + curl).
+- NOTE (deploy advisory): migrate() still does version-gated delete_many+reseed of sections/repair/sell on first run — guarded by version flags (runs once). Flagged by deploy check as a data-safety item; behavior unchanged from preview.
+
 ## Implemented (2026-08-31 wave 8)
 - ✅ Admin AI Assistant (/admin/ai): natural-language admin chat (Emergent LLM key, openai gpt-5.4, JSON action-planning). Executes real actions via safe whitelist: create/update-price/delete/make-free product, create coupon, set theme, set header (appName/tagline/city), toggle section, flash_add, send email, stats. Backend POST /api/admin/ai + _run_admin_action dispatcher. Verified via curl (stats, create_product, set_header all worked).
 - Scope boundary (told user): the assistant CANNOT edit the app source code or control the Emergent deployment — infeasible/unsafe from inside a running app. It controls store content/data only.

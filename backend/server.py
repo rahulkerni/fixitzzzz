@@ -26,6 +26,7 @@ from fastapi.responses import Response
 from storage import init_storage, put_object, get_object
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field, EmailStr
 
@@ -40,6 +41,9 @@ JWT_SECRET = os.environ['JWT_SECRET']
 JWT_ALGORITHM = "HS256"
 
 rzp_client = razorpay.Client(auth=(os.environ['RAZORPAY_KEY_ID'], os.environ['RAZORPAY_KEY_SECRET']))
+
+SHIPROCKET_API = "https://apiv2.shiprocket.in/v1/external"
+_shiprocket_token = None
 
 
 def _init_firebase():
@@ -140,6 +144,8 @@ async def get_current_user(request: Request) -> dict:
     if bearer:
         try:
             payload = jwt.decode(bearer, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+            if payload.get("type") != "access":
+                raise jwt.InvalidTokenError("Invalid token type")
             user = await db.users.find_one({"id": payload["sub"]})
             if user:
                 user = clean(user); user.pop("password_hash", None)
@@ -220,6 +226,7 @@ class OrderInput(BaseModel):
     amount: float
     details: Dict[str, Any] = Field(default_factory=dict)
     address: Dict[str, Any] = Field(default_factory=dict)
+    shipping: Dict[str, Any] = Field(default_factory=dict)
     payment: Dict[str, Any] = Field(default_factory=dict)
 
 
@@ -287,10 +294,10 @@ def compute_repair_price(base: float, override: Optional[float]) -> float:
 REPAIR_PHONE_IMG = "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?crop=entropy&cs=srgb&fm=jpg&q=85&w=600"
 
 DEFAULT_TIERS = {"bands": [
-    {"upTo": 2000, "battery": 900, "speaker": 500, "charging_port": 700, "back_panel": 800},
-    {"upTo": 4000, "battery": 1600, "speaker": 800, "charging_port": 1000, "back_panel": 1400},
-    {"upTo": 6000, "battery": 2200, "speaker": 1100, "charging_port": 1400, "back_panel": 2000},
-    {"upTo": None, "battery": 3000, "speaker": 1400, "charging_port": 1800, "back_panel": 2600},
+    {"upTo": 2000, "battery": 900, "speaker": 500, "charging_port": 700, "back_panel": 800, "earpiece": 450, "vibration": 400, "water_damage": 900, "wifi_bluetooth": 700, "software": 300, "face_id": 1100},
+    {"upTo": 4000, "battery": 1600, "speaker": 800, "charging_port": 1000, "back_panel": 1400, "earpiece": 700, "vibration": 600, "water_damage": 1600, "wifi_bluetooth": 1200, "software": 500, "face_id": 2000},
+    {"upTo": 6000, "battery": 2200, "speaker": 1100, "charging_port": 1400, "back_panel": 2000, "earpiece": 950, "vibration": 800, "water_damage": 2300, "wifi_bluetooth": 1700, "software": 700, "face_id": 3000},
+    {"upTo": None, "battery": 3000, "speaker": 1400, "charging_port": 1800, "back_panel": 2600, "earpiece": 1200, "vibration": 1000, "water_damage": 3000, "wifi_bluetooth": 2200, "software": 900, "face_id": 4200},
 ]}
 
 
@@ -302,9 +309,10 @@ def band_for(tiers: dict, screen: float) -> dict:
     return bands[-1] if bands else {}
 
 
-def compute_sell_price(base: float, conditions: List[dict], answers: Dict[str, str]) -> dict:
+def compute_sell_price(base: float, conditions: List[dict], answers: Dict[str, str], deduction_rules: Optional[Dict[str, Any]] = None) -> dict:
     price = float(base)
     breakdown = []
+    deduction_rules = deduction_rules or {}
     for cond in conditions:
         sel = answers.get(cond["id"])
         if sel is None:
@@ -312,14 +320,26 @@ def compute_sell_price(base: float, conditions: List[dict], answers: Dict[str, s
         opt = next((o for o in cond.get("options", []) if o["label"] == sel), None)
         if not opt:
             continue
-        val = float(opt.get("value", 0))
-        if cond.get("kind") == "multiplier":
-            price = price * val
-            breakdown.append({"label": f"{cond['label']}: {opt['label']}", "effect": f"x{val}"})
-        else:
-            price = price - val
-            breakdown.append({"label": f"{cond['label']}: {opt['label']}", "effect": f"-₹{val:.0f}"})
+        rule = deduction_rules.get(cond["id"], {}).get(opt["label"], {})
+        mode = rule.get("mode", "fixed")
+        value = float(rule.get("value", 0))
+        deduction = price * value / 100 if mode == "percent" else value
+        price -= deduction
+        breakdown.append({"label": f"{cond['label']}: {opt['label']}", "effect": f"-₹{deduction:.0f}", "deduction": round(deduction, 2)})
     return {"price": max(0, round(price)), "breakdown": breakdown}
+
+
+def build_sell_deduction_rules(conditions: List[dict], base_price: float, model_name: str) -> dict:
+    """Create stable model-specific rules when converting legacy sell records."""
+    model_factor = 0.82 + (sum(ord(char) for char in model_name) % 35) / 100
+    price_factor = max(0.65, min(1.45, float(base_price or 0) / 20000))
+    return {
+        condition["id"]: {
+            option["label"]: {"mode": "fixed", "value": round(float(option.get("value", 0)) * model_factor * price_factor / 10) * 10}
+            for option in condition.get("options", [])
+        }
+        for condition in conditions
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -530,12 +550,44 @@ async def flash_sale():
 
 
 @api.get("/sell/devices")
-async def sell_devices(q: Optional[str] = None):
+async def sell_devices(q: Optional[str] = None, brand: Optional[str] = None, brand_id: Optional[str] = None, model_id: Optional[str] = None):
     query: Dict[str, Any] = {"active": True}
     if q:
-        query["model"] = {"$regex": q, "$options": "i"}
-    docs = await db.sell_devices.find(query).to_list(500)
-    return [clean(d) for d in docs]
+        query["$or"] = [{"name": {"$regex": q, "$options": "i"}}, {"model": {"$regex": q, "$options": "i"}}]
+    if model_id:
+        query["model_id"] = model_id
+    elif brand_id:
+        models = await db.sell_models.find({"brand_id": brand_id}).to_list(500)
+        query["model_id"] = {"$in": [m["id"] for m in models]}
+    if brand:
+        query["brand"] = {"$regex": f"^{brand}$", "$options": "i"}
+    variants = await db.sell_variants.find(query).to_list(500)
+    brands = {b["id"]: b for b in await db.sell_brands.find({}).to_list(500)}
+    models = {m["id"]: m for m in await db.sell_models.find({}).to_list(1000)}
+    result = []
+    for variant in variants:
+        model = models.get(variant.get("model_id"), {})
+        brand_doc = brands.get(model.get("brand_id"), {})
+        if not model.get("active") or not brand_doc.get("active"):
+            continue
+        result.append(clean({**variant, "brand": brand_doc.get("name", variant.get("brand", "")),
+                             "model": model.get("name", variant.get("model", variant.get("name", ""))),
+                             "variant": variant.get("name", variant.get("variant", "")),
+                             "brand_id": model.get("brand_id"), "model_id": model.get("id")}))
+    if result:
+        return result
+    # Legacy records remain readable until the admin migrates them.
+    legacy = await db.sell_devices.find({"active": True}).to_list(500)
+    return [clean(d) for d in legacy if not brand or d.get("brand") == brand]
+
+
+@api.get("/sell/catalog")
+async def sell_catalog():
+    brands = [clean(b) for b in await db.sell_brands.find({"active": True}).sort("name", 1).to_list(500)]
+    models = [clean(m) for m in await db.sell_models.find({"active": True}).sort("name", 1).to_list(1000)]
+    model_ids = {m["id"] for m in models if m.get("active") and m.get("brand_id") in {b["id"] for b in brands}}
+    variants = [clean(v) for v in await db.sell_variants.find({"active": True, "model_id": {"$in": list(model_ids)}}).sort("name", 1).to_list(2000)]
+    return {"brands": brands, "models": models, "variants": variants}
 
 
 @api.get("/sell/conditions")
@@ -546,11 +598,18 @@ async def sell_conditions():
 
 @api.post("/sell/quote")
 async def sell_quote(inp: SellQuoteInput):
-    device = await db.sell_devices.find_one({"id": inp.device_id})
+    device = await db.sell_variants.find_one({"id": inp.device_id, "active": True})
+    if device:
+        model = await db.sell_models.find_one({"id": device.get("model_id"), "active": True})
+        brand = await db.sell_brands.find_one({"id": model.get("brand_id"), "active": True}) if model else None
+        if not model or not brand:
+            device = None
     if not device:
-        raise HTTPException(status_code=404, detail="Device not found")
+        device = await db.sell_devices.find_one({"id": inp.device_id, "active": True})
+    if not device:
+        raise HTTPException(status_code=404, detail="Active variant not found")
     conditions = [clean(c) for c in await db.sell_conditions.find({}).sort("order", 1).to_list(100)]
-    result = compute_sell_price(device.get("base_price", 0), conditions, inp.answers)
+    result = compute_sell_price(device.get("base_price", 0), conditions, inp.answers, device.get("deduction_rules"))
     result["device"] = clean(device)
     return result
 
@@ -572,6 +631,79 @@ async def buy_phone_detail(pid: str):
     if not doc:
         raise HTTPException(status_code=404, detail="Phone not found")
     return clean(doc)
+
+
+async def _shiprocket_auth():
+    global _shiprocket_token
+    if _shiprocket_token:
+        return _shiprocket_token
+    email = os.environ.get("SHIPROCKET_EMAIL")
+    password = os.environ.get("SHIPROCKET_PASSWORD")
+    if not email or not password:
+        return None
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            response = await client.post(f"{SHIPROCKET_API}/auth/login", json={"email": email, "password": password})
+            response.raise_for_status()
+            _shiprocket_token = response.json().get("token")
+            return _shiprocket_token
+    except httpx.HTTPError as exc:
+        logger.error("Shiprocket authentication failed: %s", exc)
+        return None
+
+
+@api.get("/shipping/quote")
+async def shipping_quote(pincode: str, weight: float = 1):
+    if not pincode.isdigit() or len(pincode) != 6:
+        raise HTTPException(status_code=400, detail="Enter a valid 6-digit delivery pincode")
+    token = await _shiprocket_auth()
+    pickup = os.environ.get("SHIPROCKET_PICKUP_PINCODE")
+    if token and pickup:
+        try:
+            async with httpx.AsyncClient(timeout=20) as client:
+                response = await client.get(
+                    f"{SHIPROCKET_API}/courier/serviceability/",
+                    params={"pickup_postcode": pickup, "delivery_postcode": pincode, "weight": weight, "cod": 0},
+                    headers={"Authorization": f"Bearer {token}"},
+                )
+                response.raise_for_status()
+                couriers = response.json().get("data", {}).get("available_courier_companies", [])
+                if couriers:
+                    cheapest = min(couriers, key=lambda courier: courier.get("freight_charge", float("inf")))
+                    return {"provider": "shiprocket", "available": True, "charge": round(float(cheapest.get("freight_charge", 0))), "estimated_days": cheapest.get("etd") or "3-7", "courier": cheapest.get("courier_name")}
+        except httpx.HTTPError as exc:
+            logger.error("Shiprocket serviceability failed: %s", exc)
+    settings = await db.settings.find_one({"id": "appConfig"}) or {}
+    return {"provider": "shiprocket", "available": False, "charge": float(settings.get("deliveryCharge", 0)), "estimated_days": "3-7", "configured": bool(token and pickup), "message": "Live Shiprocket rates are unavailable; using the configured delivery charge."}
+
+
+async def _create_shiprocket_shipment(order: dict):
+    if order.get("type") not in ("buy", "product") or not order.get("shipping"):
+        return
+    token = await _shiprocket_auth()
+    pickup = os.environ.get("SHIPROCKET_PICKUP_LOCATION", "Primary")
+    if not token or not os.environ.get("SHIPROCKET_PICKUP_PINCODE"):
+        return
+    address = order["shipping"]
+    payload = {
+        "order_id": order["id"], "order_date": order.get("created_at", now_iso()), "pickup_location": pickup,
+        "billing_customer_name": address.get("name", "Customer"), "billing_last_name": "",
+        "billing_address": address.get("address", address.get("text", "")), "billing_city": address.get("city", ""),
+        "billing_pincode": address.get("pincode", ""), "billing_state": address.get("state", ""),
+        "billing_country": "India", "billing_email": order.get("userEmail", ""), "billing_phone": address.get("phone", ""),
+        "shipping_is_billing": True,
+        "order_items": [{"name": item.get("name", "Item"), "sku": item.get("id", "item"), "units": item.get("qty", 1), "selling_price": item.get("price", 0)} for item in order.get("items", [])],
+        "payment_method": "Prepaid", "sub_total": order.get("amount", 0), "length": 20, "breadth": 15, "height": 10, "weight": 1,
+    }
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            response = await client.post(f"{SHIPROCKET_API}/orders/create/adhoc", json=payload, headers={"Authorization": f"Bearer {token}"})
+            response.raise_for_status()
+            data = response.json()
+        await db.orders.update_one({"id": order["id"]}, {"$set": {"shipping.status": "created", "shipping.shipment_id": data.get("shipment_id"), "shipping.shiprocket_order_id": data.get("order_id")}})
+    except Exception as exc:
+        logger.error("Shiprocket shipment creation failed for %s: %s", order["id"], exc)
+        await db.orders.update_one({"id": order["id"]}, {"$set": {"shipping.status": "failed"}})
 
 
 @api.get("/games")
@@ -611,6 +743,7 @@ async def create_order(inp: OrderInput, user: dict = Depends(get_current_user)):
         "userPhone": user.get("phone"), "userEmail": user.get("email"),
         "type": inp.type, "items": inp.items, "amount": inp.amount,
         "details": inp.details, "address": inp.address, "payment": inp.payment,
+        "shipping": inp.shipping if inp.type in ("buy", "product") else {},
         "status": "awaiting_approval" if has_free else "pending",
         "freeClaim": has_free, "created_at": now_iso(),
     }
@@ -620,6 +753,8 @@ async def create_order(inp: OrderInput, user: dict = Depends(get_current_user)):
     admin_numbers = [n.strip() for n in os.environ.get("ADMIN_SMS_NUMBERS", "").split(",") if n.strip()]
     snapshot = clean(dict(order))
     asyncio.create_task(asyncio.to_thread(notify_order_created, snapshot, admin_numbers, admin_email))
+    if inp.type in ("buy", "product") and inp.payment.get("status") in ("paid", "wallet"):
+        asyncio.create_task(_create_shiprocket_shipment(dict(order)))
     return clean(order)
 
 
@@ -793,8 +928,33 @@ ADMIN_COLLECTIONS = {
     "repair_brands": db.repair_brands, "repair_models": db.repair_models,
     "repair_issues": db.repair_issues, "repair_services": db.repair_services,
     "sell_devices": db.sell_devices, "sell_conditions": db.sell_conditions,
+    "sell_brands": db.sell_brands, "sell_models": db.sell_models, "sell_variants": db.sell_variants,
     "buy_phones": db.buy_phones, "coupons": db.coupons, "games": db.games,
 }
+
+
+async def validate_sell_variant(data: dict, item_id: Optional[str] = None):
+    model_id = data.get("model_id")
+    model = await db.sell_models.find_one({"id": model_id, "active": True})
+    if not model:
+        raise HTTPException(status_code=400, detail="A valid sell model is required")
+    if not data.get("active"):
+        return
+    try:
+        base_price = float(data.get("base_price"))
+    except (TypeError, ValueError):
+        base_price = 0
+    conditions = await db.sell_conditions.find({}).to_list(100)
+    rules = data.get("deduction_rules") or {}
+    if not data.get("name") or base_price <= 0:
+        raise HTTPException(status_code=400, detail="Active variants require a name and positive base price")
+    for condition in conditions:
+        option_rules = rules.get(condition["id"], {})
+        if any(option.get("label") not in option_rules for option in condition.get("options", [])):
+            raise HTTPException(status_code=400, detail=f"Deduction rules are incomplete for {condition.get('label', 'condition')}")
+        for rule in option_rules.values():
+            if rule.get("mode") not in ("fixed", "percent") or float(rule.get("value", -1)) < 0:
+                raise HTTPException(status_code=400, detail="Each deduction rule needs fixed or percent mode and a non-negative value")
 
 
 def get_collection(name: str):
@@ -982,7 +1142,7 @@ async def _get_tiers():
 async def _issue_names():
     issues = await db.repair_issues.find({}).to_list(100)
     m = {i["key"]: i.get("name", i["key"]) for i in issues}
-    for k, n in {"screen": "Screen Replacement", "battery": "Battery Replacement", "charging_port": "Charging Port Repair", "speaker": "Speaker Repair", "back_panel": "Back Panel Replacement"}.items():
+    for k, n in {"screen": "Screen Replacement", "battery": "Battery Replacement", "charging_port": "Charging Port Repair", "speaker": "Speaker Repair", "back_panel": "Back Panel Replacement", "earpiece": "Earpiece Repair", "vibration": "Vibration Motor", "water_damage": "Water Damage", "wifi_bluetooth": "Wi-Fi / Bluetooth", "software": "Software & Updates", "face_id": "Face ID / Biometrics"}.items():
         m.setdefault(k, n)
     return m
 
@@ -1015,7 +1175,7 @@ async def admin_apply_tiers(payload: GenericDoc, user: dict = Depends(require_ad
     mode = payload.data.get("mode", "fill")
     tiers = await _get_tiers()
     names = await _issue_names()
-    keys = ["battery", "speaker", "charging_port", "back_panel"]
+    keys = ["battery", "speaker", "charging_port", "back_panel", "earpiece", "vibration", "water_damage", "wifi_bluetooth", "software", "face_id"]
     models = await db.repair_models.find({}).to_list(5000)
     updated = 0
     for m in models:
@@ -1036,7 +1196,7 @@ async def admin_bulk_import(payload: GenericDoc, user: dict = Depends(require_ad
     allow_new = payload.data.get("allow_new_brands", True)
     tiers = await _get_tiers()
     names = await _issue_names()
-    keys = ["battery", "speaker", "charging_port", "back_panel"]
+    keys = ["battery", "speaker", "charging_port", "back_panel", "earpiece", "vibration", "water_damage", "wifi_bluetooth", "software", "face_id"]
     brands = await db.repair_brands.find({}).to_list(1000)
     bmap = {b["name"].strip().lower(): b for b in brands}
     created_models = created_brands = 0
@@ -1118,6 +1278,12 @@ async def delete_brand_cascade(bid: str, user: dict = Depends(require_admin)):
     await db.repair_models.delete_many({"brand_id": bid})
     await db.repair_brands.delete_one({"id": bid})
     return {"deleted": True, "models_removed": len(mids)}
+
+
+@api.delete("/admin/repair_services/clear-all")
+async def clear_all_repair_services(user: dict = Depends(require_admin)):
+    result = await db.repair_services.delete_many({})
+    return {"deleted": result.deleted_count}
 
 
 class AdminAIInput(BaseModel):
@@ -1280,6 +1446,29 @@ async def admin_ai(inp: AdminAIInput, user: dict = Depends(require_admin)):
     return {"message": message, "action": action, "result": result}
 
 
+# --- Sell catalog validation (defined before generic CRUD) ---
+@api.post("/admin/sell_variants")
+async def admin_create_sell_variant(payload: GenericDoc, user: dict = Depends(require_admin)):
+    data = dict(payload.data)
+    await validate_sell_variant(data)
+    data.update({"id": new_id(), "rules_version": 2, "created_at": now_iso()})
+    await db.sell_variants.insert_one(data)
+    return clean(data)
+
+
+@api.put("/admin/sell_variants/{item_id}")
+async def admin_update_sell_variant(item_id: str, payload: GenericDoc, user: dict = Depends(require_admin)):
+    existing = await db.sell_variants.find_one({"id": item_id})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Variant not found")
+    data = dict(payload.data)
+    data.pop("id", None); data.pop("_id", None)
+    data["rules_version"] = 2
+    await validate_sell_variant({**existing, **data}, item_id)
+    await db.sell_variants.update_one({"id": item_id}, {"$set": data})
+    return clean(await db.sell_variants.find_one({"id": item_id}))
+
+
 # --- Generic collection CRUD (defined last so literal routes take priority) ---
 @api.get("/admin/{collection}")
 async def admin_list(collection: str, user: dict = Depends(require_admin)):
@@ -1323,9 +1512,28 @@ async def admin_delete(collection: str, item_id: str, user: dict = Depends(requi
 # App wiring
 # ---------------------------------------------------------------------------
 app.include_router(api)
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        response.headers["Content-Security-Policy"] = "frame-ancestors 'none'"
+        if request.url.scheme == "https":
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        return response
+
+
+app.add_middleware(SecurityHeadersMiddleware)
+configured_origins = os.environ.get("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000")
+allowed_origins = [origin.strip() for origin in configured_origins.split(",") if origin.strip()]
 app.add_middleware(
-    CORSMiddleware, allow_credentials=False,
-    allow_origins=["*"], allow_methods=["*"], allow_headers=["*"],
+    CORSMiddleware, allow_credentials=True,
+    allow_origins=allowed_origins, allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 
@@ -1413,6 +1621,78 @@ async def migrate():
         await db.sell_devices.delete_many({}); await db.sell_devices.insert_many(sells)
         updates["dataVersion"] = 3
         logger.info(f"Imported {len(ds['models'])} repair models, {len(sells)} sell devices")
+    if cfg.get("dataVersion", 0) < 4:
+        new_issue_defs = [
+            ("earpiece", "Earpiece Repair", "volume-2"),
+            ("vibration", "Vibration Motor", "smartphone"),
+            ("water_damage", "Water Damage", "droplets"),
+            ("wifi_bluetooth", "Wi-Fi / Bluetooth", "wifi"),
+            ("software", "Software & Updates", "cpu"),
+            ("face_id", "Face ID / Biometrics", "scan-face"),
+        ]
+        existing_issues = await db.repair_issues.find({}).to_list(100)
+        existing_keys = {issue.get("key") for issue in existing_issues}
+        missing_issues = [
+            {"id": new_id(), "key": key, "name": name, "icon": icon, "order": len(existing_issues) + index}
+            for index, (key, name, icon) in enumerate(new_issue_defs) if key not in existing_keys
+        ]
+        if missing_issues:
+            await db.repair_issues.insert_many(missing_issues)
+        models = await db.repair_models.find({"active": True}).to_list(5000)
+        ratios = {"earpiece": 0.2, "vibration": 0.18, "water_damage": 0.45, "wifi_bluetooth": 0.35, "software": 0.12, "face_id": 0.55}
+        names = {key: name for key, name, _ in new_issue_defs}
+        created_services = 0
+        for model in models:
+            screen = await db.repair_services.find_one({"model_id": model["id"], "issue": "screen"})
+            if not screen:
+                continue
+            screen_price = screen.get("base_price", 0)
+            for key, ratio in ratios.items():
+                if await db.repair_services.find_one({"model_id": model["id"], "issue": key}):
+                    continue
+                await db.repair_services.insert_one({
+                    "id": new_id(), "model_id": model["id"], "issue": key, "issue_name": names[key],
+                    "base_price": int(round(screen_price * ratio / 10.0) * 10), "override_price": None, "active": True,
+                })
+                created_services += 1
+        updates["dataVersion"] = 4
+
+    # Older installs may already report a newer data version without having the
+    # hierarchical sell collections, so the collection state is authoritative.
+    if not await db.sell_variants.count_documents({}):
+        legacy_devices = await db.sell_devices.find({}).to_list(2000)
+        conditions = await db.sell_conditions.find({}).to_list(100)
+        brand_map, model_map = {}, {}
+        for legacy in legacy_devices:
+            brand_name = legacy.get("brand", "Other")
+            model_name = legacy.get("model", "Unknown model")
+            if brand_name not in brand_map:
+                brand_map[brand_name] = new_id()
+                await db.sell_brands.insert_one({"id": brand_map[brand_name], "name": brand_name, "active": True})
+            model_key = (brand_name, model_name)
+            if model_key not in model_map:
+                model_map[model_key] = new_id()
+                await db.sell_models.insert_one({"id": model_map[model_key], "brand_id": brand_map[brand_name], "name": model_name, "active": True})
+            rules = build_sell_deduction_rules(conditions, legacy.get("base_price", 0), model_name)
+            await db.sell_variants.insert_one({"id": legacy.get("id", new_id()), "model_id": model_map[model_key], "name": legacy.get("variant", "Standard"),
+                                                "base_price": legacy.get("base_price", 0), "deduction_rules": rules,
+                                                "rules_version": 2, "image": legacy.get("image", ""), "active": bool(legacy.get("active"))})
+        updates["dataVersion"] = 5
+        logger.info(f"Migrated {len(legacy_devices)} legacy sell devices into model-specific variants")
+
+    if cfg.get("dataVersion", 0) < 6:
+        conditions = await db.sell_conditions.find({}).to_list(100)
+        variants = await db.sell_variants.find({"rules_version": {"$ne": 2}}).to_list(5000)
+        migrated_rules = 0
+        for variant in variants:
+            model = await db.sell_models.find_one({"id": variant.get("model_id")})
+            model_name = model.get("name", variant.get("name", "Unknown model")) if model else variant.get("name", "Unknown model")
+            rules = build_sell_deduction_rules(conditions, variant.get("base_price", 0), model_name)
+            await db.sell_variants.update_one({"id": variant["id"]}, {"$set": {"deduction_rules": rules, "rules_version": 2}})
+            migrated_rules += 1
+        updates["dataVersion"] = 6
+        if migrated_rules:
+            logger.info(f"Generated model-specific deduction rules for {migrated_rules} sell variants")
     if not await db.sections.find_one({"type": "exclusive_deals"}):
         flash = await db.sections.find_one({"type": "flash_sale"})
         order = (flash.get("order", 5) + 1) if flash else 6

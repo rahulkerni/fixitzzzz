@@ -28,13 +28,14 @@ export default function AppLayout() {
   };
 
   return (
-    <div className="fx-shell pb-20">
+    <div className="fx-shell fx-site-depth pb-20">
       {/* Highlighted FixitZ top section */}
-      <header className="sticky top-0 z-40 bg-white px-4 pt-3 pb-3 border-b border-n200" data-testid="app-header">
-        <div className="flex items-center justify-between">
+      <header className="fx-topbar sticky top-0 z-40 px-4 pt-3 pb-3" data-testid="app-header">
+        <div className="fx-topbar-inner flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2" data-testid="brand-logo">
-            <div className="w-10 h-10 relative">
-              <div className="w-10 h-10 rounded-xl bg-fx flex items-center justify-center text-white font-display text-xl">F</div>
+            <div className="fx-logo-3d" aria-hidden="true">
+              <div className="fx-logo-3d-shadow" />
+              <div className="fx-logo-3d-face">F</div>
               {settings?.logo && <img src={settings.logo} alt="logo" onError={(e) => e.target.remove()} className="absolute inset-0 w-10 h-10 rounded-xl object-cover" />}
             </div>
             <div className="leading-tight">
@@ -49,7 +50,7 @@ export default function AppLayout() {
             )}
           </button>
         </div>
-        <form onSubmit={submitSearch} className="mt-3 flex items-center gap-2 bg-n200/50 rounded-full px-4 py-2.5">
+        <form onSubmit={submitSearch} className="fx-search mt-3 flex items-center gap-2 rounded-full px-4 py-2.5">
           <Search className="w-5 h-5 text-fx" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search phones, repairs, accessories…" data-testid="header-search"
             className="flex-1 outline-none text-sm bg-transparent text-n900" />
@@ -61,13 +62,13 @@ export default function AppLayout() {
 
       {settings?.features?.chat !== false && <ChatWidget />}
 
-      <nav className="fx-glass fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] z-40 grid grid-cols-5 px-2 pt-2 pb-3 border-t border-black/5" data-testid="bottom-nav">
+      <nav className="fx-bottom-nav fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] z-40 grid grid-cols-5 px-2 pt-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))]" data-testid="bottom-nav">
         {TABS.map((t) => {
           const active = t.to === "/" ? pathname === "/" : pathname.startsWith(t.to);
           const Icon = t.icon;
           return (
             <button key={t.to} onClick={() => nav(t.to)} data-testid={`nav-${t.label.toLowerCase()}`}
-              className="flex flex-col items-center gap-1 py-1 active:scale-90 transition-transform">
+              className={`fx-nav-item flex flex-col items-center gap-1 py-1 active:scale-90 transition-transform ${active ? "is-active" : ""}`}>
               <Icon className={active ? "w-6 h-6 text-fx" : "w-6 h-6 text-n500"} strokeWidth={active ? 2.5 : 2} fill={active ? "#FFF1E8" : "none"} />
               <span className={`text-[10px] font-semibold ${active ? "text-fx" : "text-n500"}`}>{t.label}</span>
             </button>

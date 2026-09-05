@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, Check, Clock, MapPin, Phone, Wrench, ChevronDown } from "lucide-react";
+import { ChevronLeft, Check, Clock, MapPin, Phone, Wrench, ChevronDown, ShieldCheck, Zap, Smartphone, BatteryCharging, Plug, Volume2, Layers, Camera, Droplets, Wifi, Cpu, ScanFace } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -10,6 +10,8 @@ import { fmt, track, payWithRazorpay } from "@/lib/utils2";
 import { playChime } from "@/lib/sounds";
 import { toast } from "sonner";
 import RequestPriceModal from "@/components/RequestPriceModal";
+
+const ISSUE_ICONS = { screen: Smartphone, battery: BatteryCharging, charging_port: Plug, speaker: Volume2, back_panel: Layers, camera: Camera, earpiece: Volume2, vibration: Smartphone, water_damage: Droplets, wifi_bluetooth: Wifi, software: Cpu, face_id: ScanFace };
 
 export default function Repair() {
   const nav = useNavigate();
@@ -44,6 +46,23 @@ export default function Repair() {
 
   const back = () => { if (step === 0) nav(-1); else setStep(step - 1); };
 
+  const selectBrand = (pickedBrand) => {
+    setBrand(pickedBrand);
+    setModel(null);
+    setService(null);
+    setExpanded(null);
+    setReq(null);
+    setStep(1);
+  };
+
+  const selectModel = (pickedModel) => {
+    setModel(pickedModel);
+    setService(null);
+    setExpanded(null);
+    setReq(null);
+    setStep(2);
+  };
+
   const book = async () => {
     if (!user) { toast.error("Please login to book"); nav("/login"); return; }
     if (!/^\d{10}$/.test(phone.trim())) { toast.error("Enter a valid 10-digit mobile number"); return; }
@@ -68,10 +87,22 @@ export default function Repair() {
   const steps = ["Brand", "Model", "Issue", "Confirm"];
 
   return (
-    <div className="pb-6" data-testid="repair-page">
+    <div className="pb-28" data-testid="repair-page">
       <div className="px-4 pt-4 flex items-center gap-3">
         <button onClick={back} className="p-1.5 rounded-full bg-white shadow-sm active:scale-90 transition-transform" data-testid="repair-back"><ChevronLeft className="w-5 h-5" /></button>
         <h1 className="font-display text-2xl text-n900">Book a Repair</h1>
+      </div>
+
+      <div className="mx-4 mt-4 rounded-3xl bg-n900 overflow-hidden relative shadow-lg" data-testid="repair-hero">
+        <div className="absolute -right-8 -top-10 w-36 h-36 rounded-full bg-fx/25 blur-2xl" />
+        <div className="relative p-5">
+          <div className="flex items-center gap-2 text-fx text-xs font-bold uppercase tracking-wide"><Zap className="w-4 h-4 fill-fx" /> Fast doorstep service</div>
+          <h2 className="font-display text-2xl leading-tight text-white mt-2">Your phone fixed.<br />Your day uninterrupted.</h2>
+          <div className="mt-4 flex items-center gap-3 text-white/70 text-xs">
+            <span className="flex items-center gap-1.5"><Clock className="w-4 h-4 text-fx" /> 30-minute arrival</span>
+            <span className="flex items-center gap-1.5"><ShieldCheck className="w-4 h-4 text-fx" /> 6-month warranty</span>
+          </div>
+        </div>
       </div>
 
       <div className="px-4 mt-3 flex items-center gap-1">
@@ -83,27 +114,31 @@ export default function Repair() {
       </div>
       <p className="px-4 mt-2 text-xs text-n500 font-semibold">Step {step + 1} of 4 · {steps[step]}</p>
 
-      <div className="mx-4 mt-3 bg-fx-light rounded-2xl p-3 flex items-center gap-2">
+      <div className="mx-4 mt-3 bg-fx-light rounded-2xl p-3 flex items-center gap-2 border border-fx/15">
         <Clock className="w-4 h-4 text-fx" /><span className="text-xs font-bold text-fx">30-Minute Repair Guarantee · Jammu Doorstep</span>
       </div>
 
       <AnimatePresence mode="wait">
         <motion.div key={step} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.25 }} className="px-4 mt-4">
           {step === 0 && (
-            <div className="grid grid-cols-3 gap-3" data-testid="repair-brands">
-              {brands.map((b) => (
-                <button key={b.id} onClick={() => { setBrand(b); setStep(1); }} data-testid={`brand-${b.id}`}
-                  className="bg-white rounded-2xl shadow-sm p-3 flex flex-col items-center gap-2 active:scale-95 transition-transform">
-                  <img src={b.image} alt={b.name} className="w-10 h-10 object-contain" onError={(e) => (e.target.style.display = "none")} />
-                  <span className="text-xs font-semibold">{b.name}</span>
-                </button>
-              ))}
+            <div data-testid="repair-brands">
+              <div className="mb-3"><p className="font-display text-xl text-n900">Choose your phone brand</p><p className="text-xs text-n500 mt-1">We will find the right repair for your device.</p></div>
+              <div className="grid grid-cols-3 gap-3">
+                {brands.map((b) => (
+                  <button key={b.id} onClick={() => selectBrand(b)} data-testid={`brand-${b.id}`}
+                    className="bg-white rounded-2xl shadow-sm p-3 flex flex-col items-center gap-2 active:scale-95 transition-transform">
+                    <img src={b.image} alt={b.name} className="w-10 h-10 object-contain" onError={(e) => (e.target.style.display = "none")} />
+                    <span className="text-xs font-semibold">{b.name}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
           {step === 1 && (
             <div className="space-y-3" data-testid="repair-models">
+              <div className="mb-1"><p className="font-display text-xl text-n900">Select your model</p><p className="text-xs text-n500 mt-1">Showing models for {brand?.name}.</p></div>
               {models.map((m) => (
-                <button key={m.id} onClick={() => { setModel(m); setStep(2); }} data-testid={`model-${m.id}`}
+                <button key={m.id} onClick={() => selectModel(m)} data-testid={`model-${m.id}`}
                   className="w-full bg-white rounded-2xl shadow-sm p-3 flex items-center gap-3 active:scale-[0.98] transition-transform">
                   <img src={m.image} alt="" className="w-12 h-12 rounded-xl object-cover" />
                   <span className="font-semibold text-n900">{m.name}</span>
@@ -115,13 +150,15 @@ export default function Repair() {
           )}
           {step === 2 && (
             <div className="space-y-3" data-testid="repair-issues">
+              <div className="mb-1"><p className="font-display text-xl text-n900">What needs fixing?</p><p className="text-xs text-n500 mt-1">Transparent pricing, genuine parts, no surprises.</p></div>
               {services.map((s) => {
                 const open = expanded === s.id;
+                const IssueIcon = ISSUE_ICONS[s.issue] || Wrench;
                 return (
                   <div key={s.id} onClick={() => setExpanded(open ? null : s.id)} data-testid={`service-${s.id}`}
                     className={`bg-white rounded-2xl shadow-sm p-4 fx-selectable cursor-pointer ${open ? "fx-selectable-active" : ""}`}>
                     <div className="flex items-center gap-3">
-                      <div className="w-11 h-11 rounded-xl bg-fx-light flex items-center justify-center"><Wrench className="w-5 h-5 text-fx" /></div>
+                      <div className="w-11 h-11 rounded-xl bg-fx-light flex items-center justify-center"><IssueIcon className="w-5 h-5 text-fx" /></div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-semibold text-n900">{s.issue_name}</span>

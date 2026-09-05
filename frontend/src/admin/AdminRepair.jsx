@@ -9,10 +9,23 @@ const TABS = ["Brands", "Models", "Issues", "Services", "Price Tiers", "Bulk Imp
 
 export default function AdminRepair() {
   const [tab, setTab] = useState("Brands");
+  const [modelSearch, setModelSearch] = useState("");
+  const [serviceSearch, setServiceSearch] = useState("");
   const { data: brands = [] } = useQuery({ queryKey: ["admin", "repair_brands"], queryFn: () => api.get("/admin/repair_brands").then((r) => r.data) });
   const { data: models = [] } = useQuery({ queryKey: ["admin", "repair_models"], queryFn: () => api.get("/admin/repair_models").then((r) => r.data) });
+  const { data: services = [] } = useQuery({ queryKey: ["admin", "repair_services"], queryFn: () => api.get("/admin/repair_services").then((r) => r.data) });
   const brandOpts = () => brands.map((b) => ({ value: b.id, label: b.name }));
   const modelOpts = () => models.map((m) => ({ value: m.id, label: m.name }));
+
+  const clearAllPrices = async () => {
+    if (!window.confirm("Delete ALL service prices? This cannot be undone.")) return;
+    try {
+      await api.delete("/admin/repair_services/clear-all");
+      window.location.reload();
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   return (
     <div data-testid="admin-repair">
@@ -35,14 +48,20 @@ export default function AdminRepair() {
           ]} />
       )}
       {tab === "Models" && (
-        <CrudManager collection="repair_models" title="Model" defaults={{ active: true }}
-          columns={[{ key: "name", label: "Model" }, { key: "brand_id", label: "Brand", render: (r) => brands.find((b) => b.id === r.brand_id)?.name || "—" }, { key: "active", label: "Active" }]}
-          fields={[
-            { key: "brand_id", label: "Brand", type: "select", options: brandOpts },
-            { key: "name", label: "Model Name", type: "text" },
-            { key: "image", label: "Model Image", type: "image" },
-            { key: "active", label: "Active", type: "boolean" },
-          ]} />
+        <>
+          <div className="mb-4 flex gap-2">
+            <input value={modelSearch} onChange={(e) => setModelSearch(e.target.value)} placeholder="Search models by name or brand…" className="flex-1 bg-white border border-n200 rounded-lg p-2.5 text-sm outline-none focus:ring-2 ring-fx" />
+          </div>
+          <CrudManager collection="repair_models" title="Model" defaults={{ active: true }}
+            searchTerm={modelSearch}
+            columns={[{ key: "brand_id", label: "Brand", render: (r) => brands.find((b) => b.id === r.brand_id)?.name || "—" }, { key: "name", label: "Model" }, { key: "active", label: "Active" }]}
+            fields={[
+              { key: "brand_id", label: "Brand", type: "select", options: brandOpts },
+              { key: "name", label: "Model Name", type: "text" },
+              { key: "image", label: "Model Image", type: "image" },
+              { key: "active", label: "Active", type: "boolean" },
+            ]} />
+        </>
       )}
       {tab === "Issues" && (
         <CrudManager collection="repair_issues" title="Issue Type" defaults={{ order: 0 }}
@@ -55,19 +74,30 @@ export default function AdminRepair() {
           ]} />
       )}
       {tab === "Services" && (
-        <CrudManager collection="repair_services" title="Repair Price" defaults={{ active: true, override_price: null }}
-          columns={[
-            { key: "model_id", label: "Model", render: (r) => models.find((m) => m.id === r.model_id)?.name || "—" },
-            { key: "issue_name", label: "Issue" }, { key: "base_price", label: "Base" }, { key: "override_price", label: "Override" },
-          ]}
-          fields={[
-            { key: "model_id", label: "Model", type: "select", options: modelOpts },
-            { key: "issue", label: "Issue Key", type: "text", help: "e.g. screen, battery" },
-            { key: "issue_name", label: "Issue Display Name", type: "text" },
-            { key: "base_price", label: "Base Price (₹)", type: "number", help: "Auto-multiplied for final price" },
-            { key: "override_price", label: "Override Price (₹)", type: "number", help: "Leave blank for auto pricing" },
-            { key: "active", label: "Active", type: "boolean" },
-          ]} />
+        <>
+          <div className="mb-4 flex gap-2">
+            <input value={serviceSearch} onChange={(e) => setServiceSearch(e.target.value)} placeholder="Search by model or issue…" className="flex-1 bg-white border border-n200 rounded-lg p-2.5 text-sm outline-none focus:ring-2 ring-fx" />
+            <button onClick={clearAllPrices} className="px-4 py-2 bg-red-500 text-white text-sm font-bold rounded-lg active:scale-95 transition-transform">Clear All</button>
+          </div>
+          <CrudManager collection="repair_services" title="Repair Price" defaults={{ active: true, override_price: null }}
+            searchTerm={serviceSearch}
+            columns={[
+              { key: "model_id", label: "Model", render: (r) => {
+                const m = models.find((x) => x.id === r.model_id);
+                const b = m ? brands.find((x) => x.id === m.brand_id) : null;
+                return m && b ? `${b.name} ${m.name}` : (m?.name || "—");
+              }},
+              { key: "issue_name", label: "Issue" }, { key: "base_price", label: "Base" }, { key: "override_price", label: "Override" },
+            ]}
+            fields={[
+              { key: "model_id", label: "Model", type: "select", options: modelOpts },
+              { key: "issue", label: "Issue Key", type: "text", help: "e.g. screen, battery" },
+              { key: "issue_name", label: "Issue Display Name", type: "text" },
+              { key: "base_price", label: "Base Price (₹)", type: "number", help: "Auto-multiplied for final price" },
+              { key: "override_price", label: "Override Price (₹)", type: "number", help: "Leave blank for auto pricing" },
+              { key: "active", label: "Active", type: "boolean" },
+            ]} />
+        </>
       )}
       {tab === "Price Tiers" && <AdminRepairTiers />}
       {tab === "Bulk Import" && <AdminRepairImport />}

@@ -65,6 +65,12 @@ def build_repair_dataset_v3(new_id):
         ("speaker", "Speaker / Mic", "volume-2"),
         ("back_panel", "Back Panel", "layers"),
         ("camera", "Camera Fix", "camera"),
+        ("earpiece", "Earpiece Repair", "volume-2"),
+        ("vibration", "Vibration Motor", "smartphone"),
+        ("water_damage", "Water Damage", "droplets"),
+        ("wifi_bluetooth", "Wi-Fi / Bluetooth", "wifi"),
+        ("software", "Software & Updates", "cpu"),
+        ("face_id", "Face ID / Biometrics", "scan-face"),
     ]
     issues = [{"id": new_id(), "key": k, "name": n, "icon": ic, "order": i} for i, (k, n, ic) in enumerate(issues_def)]
     data = {
@@ -80,7 +86,9 @@ def build_repair_dataset_v3(new_id):
         "Nothing": [("Phone 1", 3200), ("Phone 2", 4200), ("Phone 2a", 2600)],
         "iQOO": [("iQOO Neo 7", 2400), ("iQOO Z7", 1900), ("iQOO 11", 3400)],
     }
-    frac = {"battery": 0.4, "charging_port": 0.28, "speaker": 0.22, "back_panel": 0.35, "camera": 0.6}
+    frac = {"battery": 0.4, "charging_port": 0.28, "speaker": 0.22, "back_panel": 0.35, "camera": 0.6,
+            "earpiece": 0.2, "vibration": 0.18, "water_damage": 0.45, "wifi_bluetooth": 0.35,
+            "software": 0.12, "face_id": 0.55}
     def r(x): return int(round(x / 10.0)) * 10
     brands, models, services = [], [], []
     for i, (bname, mlist) in enumerate(data.items()):
@@ -117,6 +125,20 @@ def build_sell_dataset_v3(new_id):
     return out
 
 
+def build_sell_deduction_rules(conditions, base_price, model_name):
+    """Create deterministic model-specific deductions from the global questions."""
+    model_factor = 0.82 + (sum(ord(char) for char in model_name) % 35) / 100
+    price_factor = max(0.65, min(1.45, base_price / 20000))
+    rules = {}
+    for condition in conditions:
+        rules[condition["id"]] = {}
+        for option in condition.get("options", []):
+            source_value = float(option.get("value", 0))
+            value = round(source_value * model_factor * price_factor / 10) * 10
+            rules[condition["id"]][option["label"]] = {"mode": "fixed", "value": value}
+    return rules
+
+
 def build_seed(new_id, now_iso):
     ts = now_iso()
 
@@ -148,11 +170,18 @@ def build_seed(new_id, now_iso):
         ("speaker", "Speaker / Mic", "volume-2"),
         ("back_panel", "Back Panel", "layers"),
         ("camera", "Camera Fix", "camera"),
+        ("earpiece", "Earpiece Repair", "volume-2"),
+        ("vibration", "Vibration Motor", "smartphone"),
+        ("water_damage", "Water Damage", "droplets"),
+        ("wifi_bluetooth", "Wi-Fi / Bluetooth", "wifi"),
+        ("software", "Software & Updates", "cpu"),
+        ("face_id", "Face ID / Biometrics", "scan-face"),
     ]):
         issues.append({"id": new_id(), "key": key, "name": label, "icon": icon, "order": i})
 
     models = []
     services = []
+    def r(value): return int(round(value / 10.0)) * 10
     model_defs = {
         "Apple": [("iPhone 11", {"screen": 3200, "battery": 1800, "charging_port": 1200, "speaker": 900, "back_panel": 1500, "camera": 2200}),
                   ("iPhone 13", {"screen": 5500, "battery": 2400, "charging_port": 1500, "speaker": 1100, "back_panel": 2000, "camera": 3000}),
@@ -176,6 +205,13 @@ def build_seed(new_id, now_iso):
             models.append({"id": mid, "brand_id": brand_map[bname], "name": mname, "active": True,
                            "image": PHONE_IMG})
             for ikey, base in prices.items():
+                services.append({"id": new_id(), "model_id": mid, "issue": ikey,
+                                 "issue_name": next(i["name"] for i in issues if i["key"] == ikey),
+                                 "base_price": base, "override_price": None, "active": True})
+            extra_prices = {"earpiece": prices["speaker"], "vibration": prices["speaker"],
+                            "water_damage": r(prices["screen"] * 0.45), "wifi_bluetooth": r(prices["screen"] * 0.35),
+                            "software": r(prices["screen"] * 0.12), "face_id": prices["camera"]}
+            for ikey, base in extra_prices.items():
                 services.append({"id": new_id(), "model_id": mid, "issue": ikey,
                                  "issue_name": next(i["name"] for i in issues if i["key"] == ikey),
                                  "base_price": base, "override_price": None, "active": True})
@@ -209,14 +245,7 @@ def build_seed(new_id, now_iso):
             "image": p["img"], "tags": p["tags"], "stock": p["stock"], "active": True, "created_at": ts,
         })
 
-    # ----- Sell devices & conditions -----
-    sell_devices = []
-    for name, base in [("iPhone 13 128GB", 32000), ("iPhone 11 64GB", 16000), ("Samsung Galaxy S21", 18000),
-                       ("OnePlus 11 256GB", 24000), ("Redmi Note 12", 7000), ("Pixel 7 128GB", 21000),
-                       ("Vivo V27", 12000), ("Realme 11 Pro", 9000)]:
-        sell_devices.append({"id": new_id(), "brand": name.split()[0], "model": name,
-                             "base_price": base, "demandScore": 1.0, "image": SELL_BANNER, "active": True})
-
+    # ----- Sell hierarchy, variants, and global questions -----
     sell_conditions = [
         {"id": new_id(), "order": 0, "kind": "deduction", "key": "screen", "label": "Screen Condition",
          "options": [{"label": "Flawless", "value": 0}, {"label": "Minor Scratches", "value": 800}, {"label": "Cracked / Broken", "value": 3000}]},
@@ -229,6 +258,41 @@ def build_seed(new_id, now_iso):
         {"id": new_id(), "order": 4, "kind": "deduction", "key": "accessories", "label": "Bill & Box",
          "options": [{"label": "Available", "value": 0}, {"label": "Not Available", "value": 600}]},
     ]
+    sell_brands, sell_models, sell_variants = [], [], []
+    brand_ids, model_ids = {}, {}
+    brand_images = {
+        "Apple": "https://logo.clearbit.com/apple.com",
+        "Samsung": "https://logo.clearbit.com/samsung.com",
+        "OnePlus": "https://logo.clearbit.com/oneplus.com",
+        "Redmi": "https://logo.clearbit.com/mi.com",
+        "Google": "https://logo.clearbit.com/google.com",
+        "Vivo": "https://logo.clearbit.com/vivo.com",
+        "Realme": "https://logo.clearbit.com/realme.com",
+    }
+    for brand_name in ["Apple", "Samsung", "OnePlus", "Redmi", "Google", "Vivo", "Realme"]:
+        brand_ids[brand_name] = new_id()
+        sell_brands.append({"id": brand_ids[brand_name], "name": brand_name, "image": brand_images[brand_name], "active": True})
+    variants = [("Apple", "iPhone 13", "128GB", 32000), ("Apple", "iPhone 11", "64GB", 16000),
+                ("Samsung", "Galaxy S21", "128GB", 18000), ("OnePlus", "OnePlus 11", "256GB", 24000),
+                ("Redmi", "Note 12", "128GB", 7000), ("Google", "Pixel 7", "128GB", 21000),
+                ("Vivo", "V27", "128GB", 12000), ("Realme", "11 Pro", "128GB", 9000)]
+    for brand_name, model_name, variant_name, base_price in variants:
+        model_key = (brand_name, model_name)
+        if model_key not in model_ids:
+            model_ids[model_key] = new_id()
+            sell_models.append({
+                "id": model_ids[model_key], "brand_id": brand_ids[brand_name], "name": model_name,
+                "image": PHONE_IMG,
+                "details": {"category": "Smartphone", "service": "Free doorstep pickup", "inspection": "Verified at pickup"},
+                "active": True,
+            })
+        rules = build_sell_deduction_rules(sell_conditions, base_price, f"{brand_name} {model_name}")
+        sell_variants.append({
+            "id": new_id(), "model_id": model_ids[model_key], "name": variant_name,
+            "base_price": base_price, "deduction_rules": rules,
+            "rules_version": 2, "demandScore": 1.0, "image": PHONE_IMG, "active": True,
+        })
+    sell_devices = []
 
     # ----- Buy refurbished phones -----
     buy_phones = []
@@ -273,6 +337,7 @@ def build_seed(new_id, now_iso):
             "repair_brands": brands, "repair_issues": issues, "repair_models": models,
             "repair_services": services, "categories": categories, "products": product_docs,
             "sell_devices": sell_devices, "sell_conditions": sell_conditions,
+            "sell_brands": sell_brands, "sell_models": sell_models, "sell_variants": sell_variants,
             "buy_phones": buy_phones, "coupons": coupons, "games": games, "sections": sections,
         },
     }

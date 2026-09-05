@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
+import * as THREE from "three";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Clock, ChevronRight, Wrench, ShoppingBag, RefreshCw, Smartphone, Gift, ShieldCheck,
-  Wallet, Package, Sparkles, Plus, Zap, ArrowRight, BatteryCharging, Plug, Volume2, Camera, Layers,
+  Wallet, Package, Sparkles, Plus, Zap, ArrowRight, BatteryCharging, Plug, Volume2, Camera, Layers, Droplets, Wifi, Cpu, ScanFace,
 } from "lucide-react";
 import api from "@/lib/api";
 import { Section, Price, Empty, CountUp } from "@/components/common";
@@ -13,7 +14,104 @@ import { useAuth } from "@/context/AuthContext";
 import { fmt } from "@/lib/utils2";
 import { toast } from "sonner";
 
-const ICONS = { wrench: Wrench, "shopping-bag": ShoppingBag, "refresh-cw": RefreshCw, smartphone: Smartphone, wallet: Wallet, gift: Gift, sparkles: Sparkles, package: Package, zap: Zap, "battery-charging": BatteryCharging, plug: Plug, "volume-2": Volume2, camera: Camera, layers: Layers };
+const ICONS = { wrench: Wrench, "shopping-bag": ShoppingBag, "refresh-cw": RefreshCw, smartphone: Smartphone, wallet: Wallet, gift: Gift, sparkles: Sparkles, package: Package, zap: Zap, "battery-charging": BatteryCharging, plug: Plug, "volume-2": Volume2, camera: Camera, layers: Layers, droplets: Droplets, wifi: Wifi, cpu: Cpu, "scan-face": ScanFace };
+
+function ThreeDHero() {
+  const mountRef = useRef(null);
+  const pointerRef = useRef({ x: 0, y: 0 });
+  const nav = useNavigate();
+
+  useEffect(() => {
+    const mount = mountRef.current;
+    if (!mount) return undefined;
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 100);
+    camera.position.set(0, 0.1, 9.5);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    mount.appendChild(renderer.domElement);
+
+    const hero = new THREE.Group();
+    scene.add(hero);
+    const body = new THREE.Mesh(new THREE.BoxGeometry(2.8, 5.25, 0.34), new THREE.MeshStandardMaterial({ color: 0x272421, metalness: 0.8, roughness: 0.2 }));
+    hero.add(body);
+    const screen = new THREE.Mesh(new THREE.PlaneGeometry(2.48, 4.92), new THREE.MeshBasicMaterial({ color: 0x11100f }));
+    screen.position.z = 0.19;
+    hero.add(screen);
+    const glass = new THREE.Mesh(new THREE.PlaneGeometry(2.31, 4.55), new THREE.MeshBasicMaterial({ color: 0xff6a00, transparent: true, opacity: 0.2 }));
+    glass.position.set(0, -0.05, 0.2);
+    hero.add(glass);
+    const cameraCutout = new THREE.Mesh(new THREE.CircleGeometry(0.25, 32), new THREE.MeshBasicMaterial({ color: 0x080707 }));
+    cameraCutout.position.set(0, 2.03, 0.21);
+    hero.add(cameraCutout);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(3.15, 0.018, 12, 96), new THREE.MeshBasicMaterial({ color: 0xff6a00, transparent: true, opacity: 0.7 }));
+    ring.rotation.x = Math.PI / 2.3;
+    ring.rotation.y = -0.2;
+    hero.add(ring);
+    const halo = new THREE.Mesh(new THREE.TorusGeometry(3.75, 0.012, 10, 96), new THREE.MeshBasicMaterial({ color: 0x7ee7c0, transparent: true, opacity: 0.7 }));
+    halo.rotation.x = Math.PI / 2.6;
+    halo.rotation.y = 0.4;
+    hero.add(halo);
+    scene.add(new THREE.AmbientLight(0xffffff, 1.8));
+    const key = new THREE.PointLight(0xff6a00, 28, 20);
+    key.position.set(4, 3, 6);
+    scene.add(key);
+    const fill = new THREE.PointLight(0x74e3c0, 18, 18);
+    fill.position.set(-4, -2, 4);
+    scene.add(fill);
+
+    const resize = () => {
+      const width = mount.clientWidth;
+      const height = mount.clientHeight;
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+      renderer.setSize(width, height, false);
+    };
+    const move = (event) => {
+      const rect = mount.getBoundingClientRect();
+      pointerRef.current = { x: (event.clientX - rect.left) / rect.width - 0.5, y: (event.clientY - rect.top) / rect.height - 0.5 };
+    };
+    mount.addEventListener("pointermove", move);
+    window.addEventListener("resize", resize);
+    resize();
+    let frame;
+    const animate = () => {
+      frame = requestAnimationFrame(animate);
+      hero.rotation.y += 0.004;
+      hero.rotation.x += (pointerRef.current.y * -0.16 - hero.rotation.x) * 0.03;
+      hero.rotation.z += (pointerRef.current.x * -0.08 - hero.rotation.z) * 0.03;
+      ring.rotation.z += 0.003;
+      halo.rotation.z -= 0.002;
+      renderer.render(scene, camera);
+    };
+    animate();
+    return () => {
+      cancelAnimationFrame(frame);
+      mount.removeEventListener("pointermove", move);
+      window.removeEventListener("resize", resize);
+      renderer.dispose();
+      mount.removeChild(renderer.domElement);
+    };
+  }, []);
+
+  return (
+    <section className="home-3d-hero" data-testid="home-3d-hero">
+      <div className="home-3d-copy">
+        <span className="home-kicker"><Sparkles className="w-3.5 h-3.5" /> FixitZ device care</span>
+        <h1 className="font-display">Your phone, <em>elevated.</em></h1>
+        <p>Repair it. Trade it. Upgrade it. A faster way to keep every device in your orbit.</p>
+        <div className="home-3d-actions">
+          <button onClick={() => nav("/sell")} className="home-3d-primary">Sell your phone <ArrowRight className="w-4 h-4" /></button>
+          <button onClick={() => nav("/repair")} className="home-3d-secondary">Book repair</button>
+        </div>
+      </div>
+      <div ref={mountRef} className="home-3d-canvas" aria-label="Interactive 3D smartphone preview" />
+      <div className="home-3d-stat home-3d-stat-top"><ShieldCheck className="w-4 h-4" /><span>Trusted doorstep care</span></div>
+      <div className="home-3d-stat home-3d-stat-bottom"><Zap className="w-4 h-4" /><span>Fast in Jammu</span></div>
+    </section>
+  );
+}
 
 /* ---------------- Hero Banner ---------------- */
 function BannerSection({ config }) {
@@ -59,7 +157,7 @@ function CategoryGridSection({ title, config }) {
           const Icon = ICONS[it.icon] || Sparkles;
           return (
             <motion.button key={idx} whileTap={{ scale: 0.9 }} onClick={() => nav(it.link)} data-testid={`cat-grid-${it.label}`}
-              className="flex flex-col items-center gap-2">
+              className="flex flex-col items-center gap-2 fx-3d-card rounded-2xl p-1">
               <div className="w-16 h-16 rounded-2xl relative flex items-center justify-center shadow-sm overflow-hidden" style={{ background: it.color || "#FFF1E8" }}>
                 <Icon className="w-7 h-7 text-n900" strokeWidth={2.1} />
                 {it.image && <img src={it.image} alt={it.label} onError={(e) => e.target.remove()} className="absolute inset-0 w-16 h-16 object-cover" />}
@@ -108,7 +206,7 @@ function ProductCard({ p, onAdd, wide, compact }) {
   const disc = p.mrp > p.price ? Math.round((1 - p.price / p.mrp) * 100) : 0;
   const stockLeft = p.stock && p.stock <= 20 ? p.stock : null;
   return (
-    <motion.div whileTap={{ scale: 0.97 }} className={`${compact ? "min-w-[120px] w-[120px]" : wide ? "min-w-[160px] w-[160px]" : "min-w-[150px] w-[150px]"} bg-white rounded-2xl overflow-hidden shadow-md shadow-black/5`} data-testid={`product-card-${p.id}`}>
+    <motion.div whileTap={{ scale: 0.97 }} className={`${compact ? "min-w-[120px] w-[120px]" : wide ? "min-w-[160px] w-[160px]" : "min-w-[150px] w-[150px]"} bg-white rounded-2xl overflow-hidden fx-3d-card`} data-testid={`product-card-${p.id}`}>
       <div className="relative" onClick={() => nav(`/product/${p.id}`)}>
         <img src={p.image} alt={p.name} className="w-full h-32 object-cover" />
         {p.tags?.includes("free") && <Badge className="bg-emerald-500">FREE</Badge>}
@@ -404,6 +502,7 @@ export default function Home() {
 
   return (
     <div className="pb-28" data-testid="home-page">
+      <ThreeDHero />
       {isLoading && <div className="px-4 pt-4"><div className="fx-skeleton h-56 rounded-[28px]" /></div>}
       {sections.map((sec) => {
         const feat = FEATURE_MAP[sec.type];
@@ -412,7 +511,7 @@ export default function Home() {
         if (!R) return null;
         const bg = sec.config?.bg;
         return (
-          <div key={sec.id} style={bg ? { background: bg } : undefined} className={bg ? "py-1" : ""}>
+          <div key={sec.id} style={bg ? { background: bg } : undefined} className={`${bg ? "py-1" : ""} fx-3d-section`}>
             <R title={sec.title} config={sec.config || {}} />
           </div>
         );

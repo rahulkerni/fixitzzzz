@@ -9,7 +9,7 @@ import { toast } from "sonner";
  * Generic admin CRUD table.
  * fields: [{ key, label, type: text|number|textarea|select|boolean|tags|image|json, options?, help? }]
  */
-export default function CrudManager({ collection, title, fields, columns, defaults = {} }) {
+export default function CrudManager({ collection, title, fields, columns, defaults = {}, searchTerm = "" }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -17,6 +17,14 @@ export default function CrudManager({ collection, title, fields, columns, defaul
 
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ["admin", collection], queryFn: () => api.get(`/admin/${collection}`).then((r) => r.data),
+  });
+
+  const filteredRows = rows.filter(row => {
+    if (!searchTerm.trim()) return true;
+    const query = searchTerm.toLowerCase();
+    return Object.values(row).some(v =>
+      String(v || "").toLowerCase().includes(query)
+    );
   });
 
   const save = useMutation({
@@ -29,7 +37,17 @@ export default function CrudManager({ collection, title, fields, columns, defaul
 
   const del = useMutation({
     mutationFn: (id) => api.delete(`/admin/${collection}/${id}`),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin"] }); qc.invalidateQueries({ queryKey: ["sections"] }); toast.success("Deleted"); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", collection] });
+      if (collection === "repair_brands") {
+        qc.invalidateQueries({ queryKey: ["admin", "repair_models"] });
+        qc.invalidateQueries({ queryKey: ["admin", "repair_services"] });
+      }
+      if (collection === "repair_models") qc.invalidateQueries({ queryKey: ["admin", "repair_services"] });
+      qc.invalidateQueries({ queryKey: ["sections"] });
+      toast.success("Deleted");
+    },
+    onError: () => toast.error("Delete failed"),
   });
 
   const openNew = () => { setEditing(null); setForm({ ...defaults }); setOpen(true); };
@@ -67,7 +85,7 @@ export default function CrudManager({ collection, title, fields, columns, defaul
               <th className="px-3 py-2" />
             </tr></thead>
             <tbody>
-              {rows.map((row) => (
+              {filteredRows.map((row) => (
                 <tr key={row.id} className="border-b border-n200/60 hover:bg-n200/20" data-testid={`row-${row.id}`}>
                   {cols.map((c) => (
                     <td key={c.key} className="px-3 py-2 max-w-[180px] truncate">
@@ -80,7 +98,7 @@ export default function CrudManager({ collection, title, fields, columns, defaul
                   </td>
                 </tr>
               ))}
-              {!rows.length && <tr><td colSpan={cols.length + 1} className="px-3 py-8 text-center text-n500">No items yet</td></tr>}
+              {!filteredRows.length && <tr><td colSpan={cols.length + 1} className="px-3 py-8 text-center text-n500">{rows.length ? "No matches" : "No items yet"}</td></tr>}
             </tbody>
           </table>
         </div>

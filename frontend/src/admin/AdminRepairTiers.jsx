@@ -4,7 +4,7 @@ import { Plus, Trash2, Wand2 } from "lucide-react";
 import api from "@/lib/api";
 import { toast } from "sonner";
 
-const KEYS = [["battery", "Battery"], ["speaker", "Speaker"], ["charging_port", "Charging"], ["back_panel", "Back"]];
+const KEYS = [["battery", "Battery"], ["speaker", "Speaker"], ["charging_port", "Charging"], ["back_panel", "Back"], ["earpiece", "Earpiece"], ["vibration", "Vibration"], ["water_damage", "Water"], ["wifi_bluetooth", "Wi-Fi"], ["software", "Software"], ["face_id", "Biometrics"]];
 
 export default function AdminRepairTiers() {
   const [bands, setBands] = useState([]);
@@ -12,7 +12,7 @@ export default function AdminRepairTiers() {
   useEffect(() => { if (data?.bands) setBands(data.bands); }, [data]);
 
   const setBand = (i, k, v) => setBands(bands.map((b, idx) => idx === i ? { ...b, [k]: k === "upTo" ? (v === "" ? null : Number(v)) : (v === "" ? "" : Number(v)) } : b));
-  const addBand = () => setBands([...bands, { upTo: null, battery: 0, speaker: 0, charging_port: 0, back_panel: 0 }]);
+  const addBand = () => setBands([...bands, { upTo: null, ...Object.fromEntries(KEYS.map(([key]) => [key, 0])) }]);
   const removeBand = (i) => setBands(bands.filter((_, idx) => idx !== i));
 
   const save = async () => { await api.put("/admin/repair-tiers", { data: { bands } }); toast.success("Tier bands saved"); };
@@ -23,7 +23,7 @@ export default function AdminRepairTiers() {
 
   return (
     <div data-testid="repair-tiers">
-      <div className="bg-fx-light rounded-xl p-3 mb-4 text-sm text-n800">Set the price for Battery / Speaker / Charging / Back per Screen-price band. When a model's Screen price is set, these auto-fill from the matching band.</div>
+      <div className="bg-fx-light rounded-xl p-3 mb-4 text-sm text-n800">Set common repair prices per screen-price band. When a model's screen price is set, these auto-fill from the matching band.</div>
       <div className="bg-white border border-n200 rounded-xl overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="border-b border-n200 text-left text-xs text-n500 uppercase">

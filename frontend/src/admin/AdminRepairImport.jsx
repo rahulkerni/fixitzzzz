@@ -30,7 +30,7 @@ export default function AdminRepairImport() {
 
   return (
     <div data-testid="repair-import">
-      <div className="bg-fx-light rounded-xl p-3 mb-4 text-sm text-n800">Paste JSON of models. Missing brands are auto-created. Battery / Speaker / Charging / Back auto-fill from the tier bands. Required per row: <b>name, brand, screen_price</b>.</div>
+      <div className="bg-fx-light rounded-xl p-3 mb-4 text-sm text-n800">Paste JSON of models. Missing brands are auto-created and all repair faults are filled from the tier bands. Required per row: <b>name, brand, screen_price</b>.</div>
       <textarea value={text} onChange={(e) => setText(e.target.value)} rows={12} placeholder='[{"name":"iPhone 14","brand":"Apple","screen_price":6500}]' data-testid="import-json" className="w-full bg-white border border-n200 rounded-xl p-3 text-sm font-mono outline-none focus:ring-2 ring-fx" />
       <div className="flex flex-wrap items-center gap-3 mt-3">
         <button onClick={() => setText(EXAMPLE)} data-testid="import-example" className="bg-white border border-n200 text-n800 text-sm font-bold px-4 py-2 rounded-lg flex items-center gap-1"><FileJson className="w-4 h-4" /> Load example</button>

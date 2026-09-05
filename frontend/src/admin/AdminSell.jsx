@@ -1,40 +1,49 @@
 import React, { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { CircleDollarSign, Smartphone, SlidersHorizontal, TrendingUp, Plus, Pencil, Trash2, X } from "lucide-react";
 import CrudManager from "@/admin/CrudManager";
+import api from "@/lib/api";
 
 export default function AdminSell() {
-  const [tab, setTab] = useState("Devices");
-  return (
-    <div data-testid="admin-sell">
-      <h1 className="font-display text-3xl text-n900 mb-1">Sell Engine</h1>
-      <p className="text-sm text-n500 mb-4">Set base price per device and deduction rules per condition. Final = Base − deductions (× multipliers).</p>
-      <div className="flex gap-2 mb-5">
-        {["Devices", "Conditions"].map((t) => (
-          <button key={t} onClick={() => setTab(t)} data-testid={`sell-tab-${t.toLowerCase()}`} className={`px-4 py-2 rounded-lg text-sm font-bold ${tab === t ? "bg-fx text-white" : "bg-white border border-n200 text-n800"}`}>{t}</button>
-        ))}
-      </div>
+  const [tab, setTab] = useState("Brands");
+  const { data: brands = [] } = useQuery({ queryKey: ["admin", "sell_brands"], queryFn: () => api.get("/admin/sell_brands").then((r) => r.data) });
+  const { data: models = [] } = useQuery({ queryKey: ["admin", "sell_models"], queryFn: () => api.get("/admin/sell_models").then((r) => r.data) });
+  const { data: variants = [] } = useQuery({ queryKey: ["admin", "sell_variants"], queryFn: () => api.get("/admin/sell_variants").then((r) => r.data) });
+  const { data: conditions = [] } = useQuery({ queryKey: ["admin", "sell_conditions"], queryFn: () => api.get("/admin/sell_conditions").then((r) => r.data) });
+  const brandName = (id) => brands.find((b) => b.id === id)?.name || "Unknown";
+  const modelName = (id) => models.find((m) => m.id === id)?.name || "Unknown";
+  const activeVariants = variants.filter((variant) => variant.active).length;
 
-      {tab === "Devices" && (
-        <CrudManager collection="sell_devices" title="Sell Device" defaults={{ active: true, demandScore: 1.0 }}
-          columns={[{ key: "model", label: "Model" }, { key: "brand", label: "Brand" }, { key: "base_price", label: "Base Price" }, { key: "active", label: "Active" }]}
-          fields={[
-            { key: "model", label: "Model Name", type: "text" },
-            { key: "brand", label: "Brand", type: "text" },
-            { key: "base_price", label: "Base Price (₹)", type: "number" },
-            { key: "image", label: "Image URL", type: "text" },
-            { key: "active", label: "Active", type: "boolean" },
-          ]} />
-      )}
-      {tab === "Conditions" && (
-        <CrudManager collection="sell_conditions" title="Condition Question" defaults={{ order: 0, kind: "deduction", options: "[]" }}
-          columns={[{ key: "label", label: "Question" }, { key: "kind", label: "Kind" }, { key: "order", label: "Order" }]}
-          fields={[
-            { key: "label", label: "Question Label", type: "text" },
-            { key: "key", label: "Key", type: "text" },
-            { key: "kind", label: "Kind", type: "select", options: [{ value: "deduction", label: "Deduction (₹)" }, { value: "multiplier", label: "Multiplier (×)" }] },
-            { key: "order", label: "Order", type: "number" },
-            { key: "options", label: "Options (JSON)", type: "json", help: '[{"label":"Cracked","value":3000}]' },
-          ]} />
-      )}
+  return (
+    <div data-testid="admin-sell"><style>{`.admin-input { width: 100%; margin-top: 4px; background: #f1f1ef; border-radius: 8px; padding: 10px; font-size: 14px; outline: none; }`}</style>
+      <div className="flex items-start justify-between gap-4 mb-5"><div><p className="text-xs font-bold uppercase tracking-wide text-fx">Commerce controls</p><h1 className="font-display text-3xl text-n900 mt-1 mb-1">Sell Engine</h1><p className="text-sm text-n500">Build the Brand → Model → Variant catalog and price every condition per variant.</p></div><div className="hidden sm:flex w-12 h-12 rounded-xl bg-fx-light items-center justify-center"><CircleDollarSign className="w-6 h-6 text-fx" /></div></div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6"><Metric icon={Smartphone} label="Active variants" value={activeVariants} /><Metric icon={SlidersHorizontal} label="Global questions" value={conditions.length} /><Metric icon={TrendingUp} label="Models" value={models.length} /><Metric icon={CircleDollarSign} label="Pricing model" value="Base - deductions" compact /></div>
+      <div className="border-b border-n200 mb-5 flex gap-1 overflow-x-auto">{["Brands", "Models", "Variants", "Questions"].map((t) => <button key={t} onClick={() => setTab(t)} data-testid={`sell-tab-${t.toLowerCase()}`} className={`px-4 py-3 border-b-2 text-sm font-bold whitespace-nowrap ${tab === t ? "border-fx text-fx" : "border-transparent text-n500"}`}>{t}</button>)}</div>
+      {tab === "Brands" && <CrudManager collection="sell_brands" title="Sell Brand" defaults={{ active: true, image: "" }} columns={[{ key: "image", label: "Image" }, { key: "name", label: "Brand" }, { key: "active", label: "Active" }]} fields={[{ key: "name", label: "Brand Name", type: "text" }, { key: "image", label: "Brand Image", type: "image" }, { key: "active", label: "Active", type: "boolean" }]} />}
+      {tab === "Models" && <CrudManager collection="sell_models" title="Sell Model" defaults={{ active: true, image: "" }} columns={[{ key: "image", label: "Image" }, { key: "name", label: "Model" }, { key: "brand_id", label: "Brand", render: (row) => brandName(row.brand_id) }, { key: "active", label: "Active" }]} fields={[{ key: "name", label: "Model Name", type: "text" }, { key: "brand_id", label: "Brand", type: "select", options: brands.map((brand) => ({ value: brand.id, label: brand.name })) }, { key: "image", label: "Model Image", type: "image" }, { key: "active", label: "Active", type: "boolean" }]} />}
+      {tab === "Variants" && <VariantManager variants={variants} models={models} brands={brands} conditions={conditions} />}
+      {tab === "Questions" && <CrudManager collection="sell_conditions" title="Global Condition Question" defaults={{ order: 0, options: "[]" }} columns={[{ key: "label", label: "Question" }, { key: "key", label: "Key" }, { key: "order", label: "Order" }]} fields={[{ key: "label", label: "Question Label", type: "text" }, { key: "key", label: "Key", type: "text" }, { key: "order", label: "Order", type: "number" }, { key: "options", label: "Options (JSON)", type: "json", help: '[{"label":"Cracked","value":3000}]'}]} />}
     </div>
   );
+}
+
+function Metric({ icon: Icon, label, value, compact }) {
+  return <div className="bg-white border border-n200 rounded-md p-3 min-h-[88px]"><div className="flex items-center justify-between"><Icon className="w-4 h-4 text-fx" /><span className="text-[10px] font-bold uppercase text-n500">Live</span></div><p className={`${compact ? "text-sm" : "text-2xl"} font-display text-n900 mt-2 truncate`}>{value}</p><p className="text-[11px] text-n500 mt-0.5">{label}</p></div>;
+}
+
+function VariantManager({ variants, models, brands, conditions }) {
+  const qc = useQueryClient();
+  const [form, setForm] = useState(null);
+  const brandName = (id) => brands.find((brand) => brand.id === id)?.name || "Unknown";
+  const modelLabel = (id) => { const model = models.find((item) => item.id === id); return model ? `${brandName(model.brand_id)} / ${model.name}` : "Unknown"; };
+  const freshRules = () => Object.fromEntries(conditions.map((condition) => [condition.id, Object.fromEntries((condition.options || []).map((option) => [option.label, { mode: "fixed", value: 0 }]))]));
+  const save = useMutation({ mutationFn: (data) => form.id ? api.put(`/admin/sell_variants/${form.id}`, { data }) : api.post("/admin/sell_variants", { data }), onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin", "sell_variants"] }); setForm(null); }, onError: (error) => window.alert(error.response?.data?.detail || "Could not save variant") });
+  const del = useMutation({ mutationFn: (id) => api.delete(`/admin/sell_variants/${id}`), onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "sell_variants"] }) });
+  const open = (variant) => setForm(variant ? { ...variant, deduction_rules: variant.deduction_rules || freshRules() } : { name: "", model_id: "", base_price: "", image: "", active: false, deduction_rules: freshRules() });
+  const updateRule = (conditionId, label, key, value) => setForm((current) => ({ ...current, deduction_rules: { ...current.deduction_rules, [conditionId]: { ...current.deduction_rules[conditionId], [label]: { ...current.deduction_rules[conditionId][label], [key]: key === "value" ? Number(value) : value } } } }));
+  return <div data-testid="variant-manager"><div className="flex items-center justify-between mb-4"><h2 className="font-display text-2xl text-n900">Sell Variant</h2><button onClick={() => open()} className="bg-fx text-white text-sm font-bold px-4 py-2 rounded-lg flex items-center gap-1"><Plus className="w-4 h-4" /> Add</button></div><div className="bg-white border border-n200 rounded-md overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b border-n200 text-left text-xs text-n500 uppercase"><th className="px-3 py-2">Variant</th><th className="px-3 py-2">Model</th><th className="px-3 py-2">Base Price</th><th className="px-3 py-2">Active</th><th /></tr></thead><tbody>{variants.map((variant) => <tr key={variant.id} className="border-b border-n200/60"><td className="px-3 py-2">{variant.name}</td><td className="px-3 py-2">{modelLabel(variant.model_id)}</td><td className="px-3 py-2">₹{variant.base_price}</td><td className="px-3 py-2">{variant.active ? "Yes" : "No"}</td><td className="px-3 py-2"><button onClick={() => open(variant)} className="p-1.5 text-n500"><Pencil className="w-4 h-4" /></button><button onClick={() => { if (window.confirm("Delete this variant?")) del.mutate(variant.id); }} className="p-1.5 text-n500"><Trash2 className="w-4 h-4" /></button></td></tr>)}</tbody></table></div>{form && <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setForm(null)}><div className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={(event) => event.stopPropagation()}><div className="sticky top-0 bg-white flex items-center justify-between px-5 py-3 border-b border-n200"><h3 className="font-display text-lg">{form.id ? "Edit" : "Add"} Variant</h3><button onClick={() => setForm(null)}><X className="w-5 h-5" /></button></div><div className="p-5 space-y-4"><Field label="Variant name"><input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} className="admin-input" placeholder="128GB" /></Field><Field label="Model"><select value={form.model_id} onChange={(event) => setForm({ ...form, model_id: event.target.value })} className="admin-input"><option value="">Select model</option>{models.map((model) => <option key={model.id} value={model.id}>{modelLabel(model.id)}</option>)}</select></Field><Field label="Base price (₹)"><input type="number" min="0" value={form.base_price} onChange={(event) => setForm({ ...form, base_price: Number(event.target.value) })} className="admin-input" /></Field><Field label="Image URL"><input value={form.image || ""} onChange={(event) => setForm({ ...form, image: event.target.value })} className="admin-input" /></Field><div><p className="text-sm font-bold text-n900 mb-2">Deduction rules for this variant</p><p className="text-xs text-n500 mb-3">Every global question must have its own rule. Choose fixed rupees or a percentage for each answer.</p><div className="space-y-4">{conditions.map((condition) => <div key={condition.id} className="border border-n200 rounded-lg p-3"><p className="text-sm font-bold mb-2">{condition.label}</p>{(condition.options || []).map((option) => { const rule = form.deduction_rules?.[condition.id]?.[option.label] || { mode: "fixed", value: 0 }; return <div key={option.label} className="grid grid-cols-[1fr_100px_100px] gap-2 items-center mb-2"><span className="text-xs text-n800">{option.label}</span><select value={rule.mode} onChange={(event) => updateRule(condition.id, option.label, "mode", event.target.value)} className="admin-input"><option value="fixed">₹ Fixed</option><option value="percent">Percent</option></select><input type="number" min="0" value={rule.value} onChange={(event) => updateRule(condition.id, option.label, "value", event.target.value)} className="admin-input" /></div>; })}</div>)}</div></div><button type="button" onClick={() => setForm({ ...form, active: !form.active })} className={`px-4 py-2 rounded-lg text-sm font-bold ${form.active ? "bg-emerald-500 text-white" : "bg-n200 text-n800"}`}>{form.active ? "Active" : "Inactive"}</button></div><div className="sticky bottom-0 bg-white px-5 py-3 border-t border-n200"><button onClick={() => save.mutate({ ...form, base_price: Number(form.base_price), deduction_rules: form.deduction_rules })} disabled={save.isPending} className="w-full bg-fx text-white font-bold py-3 rounded-lg disabled:opacity-50">Save variant</button></div></div></div>}</div>;
+}
+
+function Field({ label, children }) {
+  return <label className="block"><span className="text-xs font-semibold text-n800">{label}</span>{children}</label>;
 }

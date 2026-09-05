@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { signInWithPopup } from "firebase/auth";
+import { getRedirectResult, signInWithPopup, signInWithRedirect } from "firebase/auth";
 import { auth, googleProvider } from "@/lib/firebase";
 import { useAuth, apiErr } from "@/context/AuthContext";
 import { toast } from "sonner";
@@ -10,21 +10,35 @@ export const GoogleButton = ({ label = "Continue with Google" }) => {
   const { loginFirebase } = useAuth();
   const [busy, setBusy] = useState(false);
 
+  const finishLogin = async (firebaseUser) => {
+    const idToken = await firebaseUser.getIdToken();
+    const u = await loginFirebase(idToken);
+    toast.success(`Welcome, ${u.name || "back"}!`);
+    if (!u.phone) { nav("/complete-profile", { replace: true }); return; }
+    nav(u.role === "admin" ? "/admin" : "/", { replace: true });
+  };
+
+  useEffect(() => {
+    getRedirectResult(auth).then((result) => {
+      if (result?.user) return finishLogin(result.user);
+      return null;
+    }).catch((err) => toast.error(apiErr(err) || "Google sign-in failed"));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const start = async () => {
     setBusy(true);
     try {
       const res = await signInWithPopup(auth, googleProvider);
-      const idToken = await res.user.getIdToken();
-      const u = await loginFirebase(idToken);
-      toast.success(`Welcome, ${u.name || "back"}!`);
-      if (!u.phone) { nav("/complete-profile", { replace: true }); return; }
-      nav(u.role === "admin" ? "/admin" : "/", { replace: true });
+      await finishLogin(res.user);
     } catch (err) {
       const code = err?.code || "";
       if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
         /* user closed the popup — ignore */
       } else if (code === "auth/unauthorized-domain") {
         toast.error("This domain isn't authorized in Firebase. Add it under Authentication → Settings → Authorized domains.");
+      } else if (code === "auth/popup-blocked" || code === "auth/operation-not-supported-in-this-environment") {
+        await signInWithRedirect(auth, googleProvider);
       } else {
         toast.error(apiErr(err) || err?.message || "Google sign-in failed");
       }
